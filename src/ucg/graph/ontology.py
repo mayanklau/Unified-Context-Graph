@@ -1,0 +1,42 @@
+from enum import StrEnum
+
+
+class NodeType(StrEnum):
+    AGENT = "agent"
+    ASSET = "asset"
+    BUSINESS_SERVICE = "business_service"
+    CONTROL = "control"
+    DATA_SET = "data_set"
+    EVIDENCE = "evidence"
+    FINDING = "finding"
+    IDENTITY = "identity"
+    INCIDENT = "incident"
+    MODEL = "model"
+    OBLIGATION = "obligation"
+    POLICY = "policy"
+    PROCESSING_ACTIVITY = "processing_activity"
+    PROMPT = "prompt"
+    RESPONSE = "response"
+    RISK = "risk"
+    TOOL = "tool"
+    VULNERABILITY = "vulnerability"
+
+
+class EdgeType(StrEnum):
+    ACCESSES = "accesses"
+    AFFECTS = "affects"
+    DEPENDS_ON = "depends_on"
+    DERIVED_FROM = "derived_from"
+    EVIDENCES = "evidences"
+    GOVERNED_BY = "governed_by"
+    IMPERSONATES = "impersonates"
+    INVOKES = "invokes"
+    LINKED_TO = "linked_to"
+    MITIGATES = "mitigates"
+    OBSERVED = "observed"
+    OWNS = "owns"
+    PROCESSES = "processes"
+    QUANTIFIES = "quantifies"
+    STORES = "stores"
+    USES = "uses"
+    VIOLATES = "violates"
