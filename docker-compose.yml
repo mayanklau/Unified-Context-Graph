@@ -1,0 +1,8 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      UCG_ENV: local
+      UCG_DEFAULT_TENANT_ID: default
