@@ -54,7 +54,7 @@ Domain modules add interpretation over the graph:
 - **Policy:** agent and human action authorization
 - **LLM firewall:** prompt, response, and tool-call guardrails
 - **Identity:** human, service, workload, credential, and agent identity graph
-- **Trust SLP:** trust posture, evidence, and control mapping
+- **Trust DLP:** sensitive data movement, evidence, policy, and control mapping
 - **Semantic layer:** stable business vocabulary over graph facts
 
 ### 5. API Layer
