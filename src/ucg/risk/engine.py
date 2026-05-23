@@ -1,5 +1,11 @@
 from ucg.graph.repository import GraphRepository
-from ucg.risk.models import RiskScoreRequest, RiskScoreResponse, RiskTier
+from ucg.risk.models import (
+    RiskScenarioRequest,
+    RiskScenarioResponse,
+    RiskScoreRequest,
+    RiskScoreResponse,
+    RiskTier,
+)
 
 
 class RiskEngine:
@@ -24,6 +30,35 @@ class RiskEngine:
             tier=self._tier(score),
             rationale=self._rationale(request),
             evidence_node_ids=[node.id for node in context.nodes if node.id != request.target_id],
+        )
+
+    def scenario(self, request: RiskScenarioRequest) -> RiskScenarioResponse:
+        weighted = (
+            request.likelihood * 0.45
+            + request.impact * 0.45
+            + (1 - request.control_strength) * 0.10
+        )
+        score = round(weighted * 100, 2)
+        evidence: set[str] = set()
+        for target_id in request.target_ids:
+            context = self.repository.context(target_id, request.tenant_id, depth=1)
+            evidence.update(node.id for node in context.nodes if node.id != target_id)
+
+        rationale = [
+            "Scenario score combines likelihood, impact, and residual control weakness.",
+            f"Scenario covers {len(request.target_ids)} target(s).",
+        ]
+        if request.annualized_loss_exposure is not None:
+            rationale.append("Annualized loss exposure was supplied by the caller.")
+
+        return RiskScenarioResponse(
+            scenario_id=request.scenario_id,
+            name=request.name,
+            score=score,
+            tier=self._tier(score),
+            annualized_loss_exposure=request.annualized_loss_exposure,
+            rationale=rationale,
+            evidence_node_ids=sorted(evidence),
         )
 
     @staticmethod

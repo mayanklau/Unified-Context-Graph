@@ -53,3 +53,11 @@ class GraphContext(BaseModel):
     depth: int
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+
+
+class GraphPath(BaseModel):
+    source_id: str
+    target_id: str
+    node_ids: list[str]
+    edge_ids: list[str]
+    depth: int

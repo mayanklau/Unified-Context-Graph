@@ -42,3 +42,16 @@ class DataMovementSignal(BaseModel):
     policy_ids: list[str] = Field(default_factory=list)
     evidence_node_ids: list[str] = Field(default_factory=list)
     recommended_decision: DLPDecision = DLPDecision.REVIEW
+
+
+class TrustDLPEvaluationRequest(BaseModel):
+    signal: DataMovementSignal
+    policies: list[TrustDLPPolicy] = Field(default_factory=list)
+
+
+class TrustDLPEvaluation(BaseModel):
+    signal_id: str
+    decision: DLPDecision
+    findings: list[str]
+    required_controls: list[str] = Field(default_factory=list)
+    evidence_node_ids: list[str] = Field(default_factory=list)

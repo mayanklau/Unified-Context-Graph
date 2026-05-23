@@ -17,3 +17,19 @@ class ProcessingActivity(BaseModel):
     retention_period: str
     subject_categories: list[DataSubjectCategory] = Field(default_factory=list)
     obligation_ids: list[str] = Field(default_factory=list)
+
+
+class PrivacyObligationRequest(BaseModel):
+    activity_id: str
+    purpose: str
+    data_categories: list[str] = Field(default_factory=list)
+    subject_categories: list[DataSubjectCategory] = Field(default_factory=list)
+    transfer_regions: list[str] = Field(default_factory=list)
+    tenant_id: str = "default"
+
+
+class PrivacyObligationDecision(BaseModel):
+    activity_id: str
+    obligations: list[str]
+    required_controls: list[str]
+    rationale: list[str]

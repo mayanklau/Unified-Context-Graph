@@ -28,3 +28,24 @@ class RiskScoreResponse(BaseModel):
     tier: RiskTier
     rationale: list[str]
     evidence_node_ids: list[str]
+
+
+class RiskScenarioRequest(BaseModel):
+    scenario_id: str
+    name: str
+    target_ids: list[str]
+    tenant_id: str = "default"
+    likelihood: float = Field(default=0.5, ge=0.0, le=1.0)
+    impact: float = Field(default=0.5, ge=0.0, le=1.0)
+    control_strength: float = Field(default=0.5, ge=0.0, le=1.0)
+    annualized_loss_exposure: float | None = Field(default=None, ge=0.0)
+
+
+class RiskScenarioResponse(BaseModel):
+    scenario_id: str
+    name: str
+    score: float
+    tier: RiskTier
+    annualized_loss_exposure: float | None
+    rationale: list[str]
+    evidence_node_ids: list[str]
