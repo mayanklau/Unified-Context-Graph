@@ -444,3 +444,251 @@ Future APIs:
   SaaS integration, or all of the above.
 - Sensitive data classifier strategy: deterministic, ML-based, vendor source,
   customer-defined, or hybrid.
+
+## 16. Additional Capabilities To Add
+
+This section is the one-go expansion list for the full graph solution. It is
+intended to guide future engineering, product packaging, and investor/customer
+storytelling. Capabilities are grouped by product layer so they can be built
+incrementally without losing the shared context graph architecture.
+
+### 16.1 Graph Platform Foundation
+
+- Persistent graph storage with pluggable backends.
+- Temporal graph history for point-in-time investigations and regulatory proof.
+- Graph versioning so ontology changes are governed and reversible.
+- Tenant isolation at graph, index, storage, and API layers.
+- Graph lineage for every node, edge, derived score, and automated decision.
+- Evidence vault for immutable artifacts, screenshots, logs, tickets, prompts,
+  responses, policies, approvals, and control attestations.
+- Source confidence scoring and conflict resolution when systems disagree.
+- Deduplication and entity resolution for assets, identities, data sets,
+  vulnerabilities, controls, and agents.
+- Graph quality scoring for freshness, completeness, provenance, and confidence.
+- Schema registry and ontology governance workflow.
+- Graph simulation sandbox for testing new connectors and policy logic.
+- Bulk import, replay, backfill, and rollback support.
+
+### 16.2 Connector And Integration Ecosystem
+
+- Connector SDK with mapping templates, validation, replay, and contract tests.
+- Connector marketplace for first-party, partner, and customer-built adapters.
+- SIEM and SOAR connectors.
+- EDR, XDR, NDR, and endpoint telemetry connectors.
+- Vulnerability scanner and exploit intelligence connectors.
+- CMDB, cloud asset, Kubernetes, container, and workload inventory connectors.
+- IAM, PAM, IGA, IdP, directory, secrets manager, and API key connectors.
+- CNAPP, CSPM, DSPM, SSPM, CIEM, and SaaS posture connectors.
+- DLP, data catalog, data warehouse, object storage, and database connectors.
+- Privacy, GRC, ticketing, procurement, contract, and vendor-risk connectors.
+- LLM gateway, model registry, agent runtime, vector database, and prompt
+  management connectors.
+- Business system connectors for revenue, process criticality, ownership,
+  geography, customer impact, and service tier.
+- Webhook, Kafka, Redpanda, Kinesis, Pub/Sub, and file-drop ingestion modes.
+
+### 16.3 Agentic SOC
+
+- Alert-to-graph correlation and automatic case context building.
+- Attack path reconstruction across identity, network, vulnerability, and data.
+- Incident blast-radius and business-impact analysis.
+- Agent investigation workspace with evidence packs and reasoning traces.
+- Autonomous triage with policy-constrained action execution.
+- Human approval workflows for containment, remediation, and data access.
+- Case timeline generation from graph events.
+- MITRE ATT&CK mapping and technique-level evidence.
+- Threat intelligence enrichment and campaign correlation.
+- Root cause analysis for incidents and recurring findings.
+- Control failure analysis after incidents.
+- Post-incident lessons learned and graph-driven prevention recommendations.
+
+### 16.4 Cyber Risk Quantification
+
+- Financial exposure modeling using FAIR-style frequency and magnitude inputs.
+- Business service impact mapping.
+- Scenario library for ransomware, cloud breach, data exfiltration, agent
+  misuse, SaaS compromise, credential theft, and supply-chain compromise.
+- Control ROI and remediation cost-benefit analysis.
+- Portfolio risk aggregation across assets, business units, geographies, and
+  vendors.
+- Risk appetite and tolerance thresholds.
+- Risk trend forecasting using graph freshness and threat activity.
+- Board and executive reporting views.
+- Risk exception lifecycle and compensating control evidence.
+- Continuous control monitoring tied to risk score changes.
+
+### 16.5 Vulnerability, Exposure, And Attack Path Management
+
+- Exposure graph combining internet reachability, cloud posture, identity paths,
+  lateral movement, data sensitivity, and exploitability.
+- Exploit prediction and active exploitation enrichment.
+- EPSS, KEV, CVSS, exploit-kit, dark web, and threat-campaign correlation.
+- Remediation ownership routing and SLA management.
+- Patch, configuration, and compensating control recommendation engine.
+- Vulnerability exception workflow with risk acceptance evidence.
+- Toxic combination detection across misconfigurations, privileges, secrets,
+  vulnerable software, and sensitive data.
+- External attack surface management integration.
+- Cloud attack path analysis for AWS, Azure, GCP, Kubernetes, and SaaS.
+
+### 16.6 Trust DLP And Data Protection
+
+- Sensitive data classification graph across structured, unstructured, SaaS,
+  endpoint, cloud, prompt, response, and tool-call surfaces.
+- Data flow mapping across applications, agents, identities, APIs, vendors,
+  regions, and storage systems.
+- Trust-aware DLP policy evaluation using identity, purpose, consent, risk,
+  destination, business context, and control posture.
+- Inline and asynchronous DLP decisioning: allow, redact, mask, tokenize, block,
+  quarantine, review, escalate, or require step-up authorization.
+- Prompt and response DLP for LLM and agent workflows.
+- Tool-call DLP for file access, database queries, SaaS actions, email, chat,
+  code repositories, and ticketing systems.
+- Data exfiltration path analysis and evidence generation.
+- Cross-border transfer and residency enforcement.
+- Data minimization and purpose limitation enforcement.
+- DLP policy simulation and false-positive tuning.
+- Sensitive data lineage and downstream use tracking.
+
+### 16.7 LLM Firewall And AI Security
+
+- Prompt injection detection using graph context, known attack patterns, and
+  behavioral signals.
+- Jailbreak, instruction hierarchy, and policy bypass detection.
+- Tool-use authorization before agents execute commands or external actions.
+- Retrieval guardrails for RAG and vector search.
+- Model response inspection for secrets, regulated data, unsafe guidance, and
+  policy violations.
+- Model and agent inventory with owners, versions, evaluations, deployment
+  environments, and risk posture.
+- AI red-team test packs and regression suites.
+- Agent memory governance and retention controls.
+- Model supply-chain and dependency risk.
+- AI incident response playbooks and evidence packs.
+- Evaluation telemetry connected to policy and risk outcomes.
+
+### 16.8 Agent Policy Enforcement
+
+- Policy authoring UI and policy-as-code repository integration.
+- Policy simulation against historical graph events.
+- Runtime policy decisions for tool calls, data access, remediation actions,
+  identity changes, ticket updates, and communications.
+- Delegated authority graph for agents acting on behalf of users or services.
+- Step-up approval and just-in-time authorization.
+- Separation-of-duties and toxic-combination detection.
+- Policy exception lifecycle with expiration and evidence.
+- Decision audit trail with prompt, response, tool, graph context, and approver.
+- Pluggable policy runtimes such as Cedar, OPA/Rego, and custom rules.
+
+### 16.9 Identity For Human, Machine, Workload, And Agentic Worlds
+
+- Unified identity graph spanning humans, services, workloads, API keys,
+  sessions, devices, agents, models, and tool credentials.
+- Identity resolution and ownership mapping.
+- Privilege graph and entitlement analysis.
+- Agent identity binding and delegated authority tracking.
+- Identity blast-radius analysis.
+- Dormant, orphaned, excessive, and anomalous privilege detection.
+- Secrets, keys, tokens, certificates, and credential lineage.
+- Just-in-time access and access review workflows.
+- Identity risk scoring tied to incidents, DLP findings, and vulnerabilities.
+
+### 16.10 Privacy Operations
+
+- RoPA, DPIA, DSR/DSAR, deletion, consent, retention, and transfer workflows.
+- Data subject, data category, lawful basis, purpose, region, processor, and
+  sub-processor graph.
+- Privacy obligation library by regulation, geography, industry, contract, and
+  customer commitment.
+- Automated evidence collection for privacy controls.
+- Data retention and deletion verification.
+- Consent and purpose enforcement connected to Trust DLP and policy decisions.
+- Privacy incident correlation with SOC and DLP events.
+- Regulatory impact analysis when systems, vendors, or data flows change.
+
+### 16.11 Trust Semantic Layer
+
+- Canonical business vocabulary for assets, controls, risks, obligations,
+  identities, agents, data, prompts, policies, and evidence.
+- Natural-language question answering over graph context with citations.
+- Semantic query planning that translates questions into graph traversals.
+- Role-aware answer shaping for analysts, executives, privacy teams, and agents.
+- Retrieval contracts for autonomous agents.
+- Semantic caching and answer provenance.
+- Ontology mapping from vendor schemas to canonical concepts.
+- Knowledge packs for industry frameworks and regulations.
+
+### 16.12 Control, Compliance, And Audit
+
+- Control library mapped to frameworks such as NIST CSF, ISO 27001, SOC 2, PCI,
+  HIPAA, GDPR, CCPA/CPRA, DORA, NIS2, and AI governance frameworks.
+- Continuous control monitoring from graph signals.
+- Control test automation and evidence collection.
+- Audit-ready evidence packages.
+- Control ownership, effectiveness, exceptions, and remediation status.
+- Policy-to-control-to-risk traceability.
+- Regulatory change impact analysis.
+- Third-party and vendor control posture integration.
+
+### 16.13 User Experience And Workflows
+
+- Graph explorer for entities, paths, timelines, evidence, and decisions.
+- Investigation workbench for SOC and agentic SOC.
+- Risk cockpit for executives and risk owners.
+- Privacy operations console.
+- Trust DLP policy and incident console.
+- Agent governance console with decisions, traces, approvals, and exceptions.
+- Connector management and data quality console.
+- Policy simulation and what-if analysis UI.
+- Reporting, dashboards, exports, and scheduled briefs.
+- Collaboration workflows with comments, assignments, approvals, and tickets.
+
+### 16.14 Analytics, ML, And Automation
+
+- Graph analytics for centrality, communities, critical paths, and weak points.
+- Attack path scoring and recommendation ranking.
+- Entity resolution models.
+- Sensitive data classification models.
+- Anomaly detection for identity, data movement, agent actions, and prompts.
+- Risk forecasting and control optimization.
+- Automated remediation recommendations with policy guardrails.
+- Agent task planning grounded in graph context.
+- Feedback loops from analyst decisions and incident outcomes.
+
+### 16.15 Platform Operations
+
+- Multi-region deployment.
+- High availability and disaster recovery.
+- Backup, restore, replay, and point-in-time recovery.
+- Observability with metrics, traces, logs, and graph health.
+- Data retention, archival, legal hold, and deletion.
+- Encryption at rest and in transit.
+- Key management and customer-managed key support.
+- Rate limiting, quotas, and workload isolation.
+- API tokens, service accounts, scoped permissions, and audit trails.
+- Cost management for graph storage, search, embeddings, and ingestion.
+
+### 16.16 Developer And Partner Platform
+
+- Public API and SDKs.
+- Connector scaffolding tools.
+- Local development sandbox with sample graph data.
+- Contract tests and certification for connectors.
+- Webhooks and event subscriptions.
+- Terraform, Helm, and deployment templates.
+- Example integrations for SIEM, IAM, DLP, LLM gateway, and ticketing.
+- Documentation portal and architecture decision records.
+- Versioned API and migration guides.
+
+### 16.17 Data Products And Packaging
+
+- Agentic SOC context graph package.
+- Cyber risk quantification package.
+- Trust DLP package.
+- LLM firewall and AI security package.
+- Privacy operations package.
+- Identity graph package.
+- Trust semantic layer package.
+- Executive risk reporting package.
+- Connector packs by ecosystem and industry.
+- Managed ontology and control content packs.
