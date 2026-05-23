@@ -1,6 +1,6 @@
 from ucg.trust_dlp.models import (
-    DLPDecision,
     DataMovementSignal,
+    DLPDecision,
     TrustDLPEvaluation,
     TrustDLPPolicy,
 )
