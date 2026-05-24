@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from ucg.api.routes import (
+    advanced,
     agents,
     capabilities,
     connectors,
@@ -34,3 +35,4 @@ api_router.include_router(agents.router, prefix="/v1/agents", tags=["agents"])
 api_router.include_router(trust_dlp.router, prefix="/v1/trust-dlp", tags=["trust-dlp"])
 api_router.include_router(privacy.router, prefix="/v1/privacy", tags=["privacy"])
 api_router.include_router(controls.router, prefix="/v1/controls", tags=["controls"])
+api_router.include_router(advanced.router, prefix="/v1", tags=["advanced-foundations"])
