@@ -1,0 +1,728 @@
+# Security Graph — core ontology
+#
+# This file is the single source of truth for what the graph means:
+#   * node_types       what exists, how each entity is recognised (identity spine), its properties
+#   * edge_types       which relationships are legal between which node types
+#   * attack_semantics how relationships become attacker movement, with every probability parameter
+#
+# It is versioned (semver) and validated on load. Change it through review:
+#   secgraph ontology validate path/to/file.yaml
+#   secgraph ontology docs > docs/ONTOLOGY.md
+#
+# Conventions: node types PascalCase, edge types UPPER_SNAKE_CASE, properties snake_case.
+# Identifier order matters — the first identifier that matches wins when sources disagree.
+
+ontology:
+  name: security-graph-core
+  version: 1.0.0
+  description: >
+    Core ontology joining the cyber plane (assets, identities, exposure, controls, detections),
+    the business plane (services, data) and the AI plane (agents, models, tools) in one graph.
+
+# =========================================================================== #
+node_types:
+  Asset:
+    plane: cyber
+    description: Anything that computes or routes — server, workstation, container, cloud resource, network or OT device.
+    identifiers:
+      - {kind: cloud_id, normalize: none, exclusive: true, description: Cloud provider resource id / ARN}
+      - {kind: serial, normalize: upper, exclusive: true, description: Hardware serial number}
+      - {kind: agent_id, normalize: lower, exclusive: true, description: EDR / management agent id}
+      - {kind: asset_id, normalize: lower, exclusive: true, description: CMDB or asset-inventory record id}
+      - {kind: fqdn, normalize: fqdn, exclusive: true, description: Fully qualified domain name}
+      - {kind: mac, normalize: mac, description: Network interface MAC address}
+      - {kind: hostname, normalize: hostname, weak: true, derived_from: fqdn, derive: first_label,
+         description: Short host name — weak because prod and dev hosts can share it}
+      - {kind: ip, normalize: ip, weak: true, match: false,
+         description: "IP address — searchable but never used to merge (DHCP, NAT)"}
+    name_from: [name, hostname, fqdn, asset_id, cloud_id, ip]
+    properties:
+      name: {type: string, max_length: 256}
+      asset_type:
+        type: enum
+        values: [server, workstation, laptop, mobile, virtual_machine, container, kubernetes_cluster, cloud_resource,
+                 network_device, firewall, load_balancer, database_server, application, iot, ot, other]
+      os: {type: string, max_length: 128}
+      os_version: {type: string, max_length: 64}
+      environment: {type: enum, values: [production, staging, development, test, dr, unknown]}
+      criticality: {type: integer, minimum: 1, maximum: 5, description: "Business criticality, 5 is highest"}
+      crown_jewel: {type: boolean, description: Explicitly designated high-value asset}
+      internet_exposed: {type: boolean, description: Reachable from the internet}
+      owner: {type: string, max_length: 256}
+      location: {type: string, max_length: 128}
+      status: {type: enum, values: [active, decommissioned, quarantined, unknown]}
+
+  Identity:
+    plane: cyber
+    description: A human, service, machine or agent account, or a group of them.
+    identifiers:
+      - {kind: sid, normalize: upper, exclusive: true, description: Directory security identifier}
+      - {kind: upn, normalize: email, exclusive: true, sensitive: true, description: User principal name}
+      - {kind: account, normalize: lower, description: "Account name, e.g. domain\\user or a service-account name"}
+      - {kind: email, normalize: email, sensitive: true, description: Mail address}
+    name_from: [display_name, account, upn, email, sid]
+    properties:
+      display_name: {type: string, max_length: 256, sensitive: true}
+      identity_type: {type: enum, values: [human, service, machine, agent, group]}
+      privileged: {type: boolean, description: Holds administrative rights}
+      mfa_enabled: {type: boolean}
+      status: {type: enum, values: [active, disabled, locked, unknown]}
+      department: {type: string, max_length: 128}
+      last_logon: {type: datetime}
+
+  Software:
+    plane: cyber
+    description: A software component at a specific version (package, product, firmware).
+    identifiers:
+      - {kind: purl, normalize: purl, exclusive: true, description: Package URL}
+      - {kind: cpe, normalize: cpe, description: CPE 2.3 name}
+      - {kind: software_key, normalize: lower, description: "vendor:product:version when no purl/CPE exists"}
+    name_from: [name, purl, cpe, software_key]
+    properties:
+      name: {type: string, max_length: 256}
+      version: {type: string, max_length: 128}
+      vendor: {type: string, max_length: 256}
+      ecosystem: {type: string, max_length: 64}
+      end_of_life: {type: boolean}
+      license: {type: string, max_length: 128}
+
+  Vulnerability:
+    plane: cyber
+    description: A publicly or privately identified weakness (CVE or advisory).
+    identifiers:
+      - {kind: cve, normalize: cve, exclusive: true}
+      - {kind: vuln_id, normalize: upper, description: "Non-CVE advisory id (GHSA, vendor advisory, internal)"}
+    name_from: [cve, vuln_id]
+    properties:
+      title: {type: string, max_length: 512}
+      description: {type: string, max_length: 8000}
+      cvss_score: {type: number, minimum: 0, maximum: 10}
+      cvss_vector: {type: string, max_length: 128}
+      attack_vector: {type: enum, values: [network, adjacent, local, physical]}
+      epss: {type: number, minimum: 0, maximum: 1, description: EPSS probability}
+      epss_percentile: {type: number, minimum: 0, maximum: 1}
+      kev: {type: boolean, description: Listed in a known-exploited catalogue (CISA KEV / CERT-In)}
+      kev_date_added: {type: datetime}
+      ransomware_use: {type: boolean}
+      exploit_available: {type: boolean}
+      cwe: {type: string_list}
+      published: {type: datetime}
+
+  Finding:
+    plane: cyber
+    description: One occurrence of a vulnerability or misconfiguration on one asset, with its own lifecycle.
+    identifiers:
+      - {kind: finding_key, normalize: lower, exclusive: true}
+    name_from: [title, finding_key]
+    properties:
+      title: {type: string, max_length: 512}
+      status: {type: enum, values: [open, in_progress, reopened, risk_accepted, resolved, false_positive]}
+      severity: {type: enum, values: [critical, high, medium, low, info]}
+      scanner: {type: string, max_length: 128}
+      port: {type: integer, minimum: 0, maximum: 65535}
+      protocol: {type: string, max_length: 16}
+      first_detected: {type: datetime}
+      last_detected: {type: datetime}
+      due_date: {type: datetime}
+      exception_until: {type: datetime, description: Risk acceptance expiry}
+      exception_reason: {type: string, max_length: 1000}
+      ticket_ref: {type: string, max_length: 128}
+
+  Control:
+    plane: cyber
+    description: A deployed security control instance and how well it works.
+    identifiers:
+      - {kind: control_key, normalize: lower, exclusive: true}
+    name_from: [name, control_key]
+    properties:
+      name: {type: string, max_length: 256}
+      control_type:
+        type: enum
+        required: true
+        values: [waf, network_ips, virtual_patching, segmentation, firewall, edr, ndr, siem_detection, deception,
+                 mfa, pam, jit_access, credential_guard, encryption_at_rest, dlp, email_security, patch_management,
+                 app_allowlisting, backup, llm_firewall, semantic_firewall, agent_policy_enforcement, tool_sandboxing,
+                 human_in_the_loop, other]
+      effectiveness: {type: number, minimum: 0, maximum: 1, description: Measured or assessed effectiveness}
+      status: {type: enum, values: [active, degraded, inactive, planned]}
+      vendor: {type: string, max_length: 128}
+      framework_refs: {type: string_list, description: "Control framework references, e.g. RBI-CSF 4.2, ISO27001 A.8.8"}
+
+  Alert:
+    plane: cyber
+    description: A detection raised by the SIEM, EDR or another sensor.
+    ttl_days: 365
+    identifiers:
+      - {kind: alert_key, normalize: lower, exclusive: true}
+    name_from: [title, alert_key]
+    properties:
+      title: {type: string, max_length: 512}
+      severity: {type: enum, values: [critical, high, medium, low, info]}
+      status: {type: enum, values: [new, triaged, investigating, closed]}
+      disposition: {type: enum, values: [true_positive, false_positive, benign, unknown]}
+      rule: {type: string, max_length: 256}
+      source_product: {type: string, max_length: 128}
+      event_time: {type: datetime}
+      description: {type: string, max_length: 4000}
+
+  Incident:
+    plane: cyber
+    description: A case grouping alerts into one investigation.
+    identifiers:
+      - {kind: incident_key, normalize: lower, exclusive: true}
+    name_from: [title, incident_key]
+    properties:
+      title: {type: string, max_length: 512}
+      severity: {type: enum, values: [critical, high, medium, low, info]}
+      status: {type: enum, values: [open, contained, eradicated, closed]}
+      disposition: {type: enum, values: [true_positive, false_positive, benign, unknown]}
+      opened_at: {type: datetime}
+      closed_at: {type: datetime}
+      summary: {type: string, max_length: 8000}
+
+  Indicator:
+    plane: threat
+    description: An observable associated with malicious activity (IP, domain, URL, file hash).
+    ttl_days: 180
+    identifiers:
+      - {kind: indicator, normalize: lower, exclusive: true}
+    name_from: [indicator]
+    properties:
+      indicator_type: {type: enum, values: [ip, domain, url, hash, email, other]}
+      reputation: {type: enum, values: [malicious, suspicious, benign, unknown]}
+      source: {type: string, max_length: 128}
+
+  Technique:
+    plane: threat
+    description: A MITRE ATT&CK (or ATLAS) technique.
+    identifiers:
+      - {kind: attack_id, normalize: attack_id, exclusive: true}
+    name_from: [name, attack_id]
+    properties:
+      name: {type: string, max_length: 256}
+      tactics: {type: string_list}
+      platforms: {type: string_list}
+      description: {type: string, max_length: 8000}
+
+  ThreatActor:
+    plane: threat
+    description: A tracked adversary group or campaign.
+    identifiers:
+      - {kind: actor_key, normalize: lower, exclusive: true}
+    name_from: [name, actor_key]
+    properties:
+      name: {type: string, max_length: 256}
+      aliases: {type: string_list}
+      motivation: {type: string, max_length: 128}
+      sophistication: {type: enum, values: [low, medium, high, advanced]}
+      description: {type: string, max_length: 8000}
+
+  BusinessService:
+    plane: business
+    description: A business capability the organisation must keep running.
+    identifiers:
+      - {kind: service_key, normalize: lower, exclusive: true}
+    name_from: [name, service_key]
+    properties:
+      name: {type: string, max_length: 256}
+      criticality: {type: integer, minimum: 1, maximum: 5}
+      owner: {type: string, max_length: 256}
+      rto_hours: {type: number, minimum: 0}
+      regulatory_tags: {type: string_list, description: "e.g. RBI, DPDPA, CERT-In, PCI-DSS"}
+      description: {type: string, max_length: 4000}
+
+  DataStore:
+    plane: business
+    description: A place data lives — database, bucket, share, vector store or knowledge base.
+    identifiers:
+      - {kind: datastore_key, normalize: lower, exclusive: true}
+    name_from: [name, datastore_key]
+    properties:
+      name: {type: string, max_length: 256}
+      store_type:
+        type: enum
+        values: [database, object_storage, file_share, data_lake, vector_store, knowledge_base, saas, other]
+      classification: {type: enum, values: [public, internal, confidential, restricted]}
+      contains_pii: {type: boolean}
+      pii_categories: {type: string_list}
+      record_count: {type: integer, minimum: 0}
+      criticality: {type: integer, minimum: 1, maximum: 5}
+      crown_jewel: {type: boolean}
+      owner: {type: string, max_length: 256}
+
+  NetworkSegment:
+    plane: cyber
+    description: A network zone or subnet. In attack maths it is a network position an attacker can hold.
+    identifiers:
+      - {kind: segment_key, normalize: lower, exclusive: true}
+      - {kind: cidr, normalize: cidr}
+    name_from: [name, segment_key, cidr]
+    properties:
+      name: {type: string, max_length: 256}
+      zone: {type: enum, values: [internet, dmz, internal, restricted, management, ot, cloud, partner]}
+
+  AIAgent:
+    plane: ai
+    description: An AI agent or agentic workflow that acts on behalf of the organisation.
+    identifiers:
+      - {kind: agent_key, normalize: lower, exclusive: true}
+    name_from: [name, agent_key]
+    properties:
+      name: {type: string, max_length: 256}
+      purpose: {type: string, max_length: 1000}
+      framework: {type: string, max_length: 128}
+      autonomy_level: {type: enum, values: [assistive, supervised, autonomous]}
+      status: {type: enum, values: [active, disabled, experimental]}
+      owner: {type: string, max_length: 256}
+      criticality: {type: integer, minimum: 1, maximum: 5}
+      crown_jewel: {type: boolean}
+
+  AIModel:
+    plane: ai
+    description: A language or ML model that agents call.
+    identifiers:
+      - {kind: model_key, normalize: lower, exclusive: true}
+    name_from: [name, model_key]
+    properties:
+      name: {type: string, max_length: 256}
+      provider: {type: string, max_length: 128}
+      version: {type: string, max_length: 128}
+      deployment: {type: enum, values: [on_prem, private_cloud, public_api]}
+      sovereign: {type: boolean, description: Runs entirely inside the organisation's jurisdiction and control}
+      fine_tuned: {type: boolean}
+
+  Tool:
+    plane: ai
+    description: A tool or API an agent can invoke (for example an MCP tool).
+    identifiers:
+      - {kind: tool_key, normalize: lower, exclusive: true}
+    name_from: [name, tool_key]
+    properties:
+      name: {type: string, max_length: 256}
+      description: {type: string, max_length: 2000}
+      protocol: {type: enum, values: [mcp, http, grpc, native, other]}
+      risk_tier: {type: enum, values: [read_only, low, medium, high, critical]}
+      side_effects: {type: boolean}
+
+# =========================================================================== #
+edge_types:
+  # --- exposure ------------------------------------------------------------
+  RUNS:
+    description: The asset has this software installed or running.
+    source: [Asset]
+    target: [Software]
+    ttl_days: 90
+    properties:
+      install_path: {type: string, max_length: 512}
+  HAS_FINDING:
+    description: The finding was detected on this asset.
+    source: [Asset]
+    target: [Finding]
+  INSTANCE_OF:
+    description: The finding is an occurrence of this vulnerability.
+    source: [Finding]
+    target: [Vulnerability]
+  AFFECTS:
+    description: The vulnerability affects this software version.
+    source: [Vulnerability]
+    target: [Software]
+    properties:
+      version_range: {type: string, max_length: 256}
+
+  # --- network -------------------------------------------------------------
+  CONNECTS_TO:
+    description: The source asset can open a connection to the target asset (observed flow or allowed path).
+    source: [Asset]
+    target: [Asset]
+    ttl_days: 30
+    properties:
+      port: {type: integer, minimum: 0, maximum: 65535}
+      protocol: {type: string, max_length: 16}
+      service: {type: string, max_length: 64}
+  IN_SEGMENT:
+    description: The asset sits in this network segment.
+    source: [Asset]
+    target: [NetworkSegment]
+  ROUTES_TO:
+    description: Traffic is permitted from the source segment to the target segment.
+    source: [NetworkSegment]
+    target: [NetworkSegment]
+    properties:
+      ports: {type: string, max_length: 256}
+      policy_ref: {type: string, max_length: 256}
+
+  # --- identity ------------------------------------------------------------
+  HAS_ACCESS:
+    description: The identity is authorised on the target.
+    source: [Identity]
+    target: [Asset, DataStore, Tool]
+    properties:
+      privilege: {type: enum, values: [read, write, admin]}
+      via: {type: string, max_length: 128, description: "How access is exercised — rdp, ssh, db role, api"}
+  HAS_SESSION:
+    description: Credential material for the identity is present on the asset (logon session, cached credential, token).
+    source: [Asset]
+    target: [Identity]
+    ttl_days: 14
+    properties:
+      session_type: {type: enum, values: [interactive, service, cached, token]}
+  MEMBER_OF:
+    description: The identity inherits the rights of the group.
+    source: [Identity]
+    target: [Identity]
+  OWNS:
+    description: Accountable owner (no attacker movement implied).
+    source: [Identity]
+    target: [Asset, DataStore, BusinessService, AIAgent]
+
+  # --- business ------------------------------------------------------------
+  HOSTS:
+    description: The data store runs on, or is served by, this asset.
+    source: [Asset]
+    target: [DataStore]
+  SUPPORTS:
+    description: The business service needs this component to operate.
+    source: [Asset, DataStore, AIAgent]
+    target: [BusinessService]
+  DEPENDS_ON:
+    description: The source service needs the target to operate.
+    source: [BusinessService]
+    target: [BusinessService, Asset, DataStore, AIAgent]
+
+  # --- controls ------------------------------------------------------------
+  PROTECTS:
+    description: The control covers the target.
+    source: [Control]
+    target: [Asset, Identity, DataStore, NetworkSegment, AIAgent, Tool]
+  MITIGATES:
+    description: The control compensates for a specific finding, vulnerability or technique.
+    source: [Control]
+    target: [Finding, Vulnerability, Technique]
+
+  # --- detection & response ------------------------------------------------
+  TRIGGERED_ON:
+    description: The alert fired on this entity.
+    source: [Alert]
+    target: [Asset, Identity, AIAgent, DataStore]
+  INDICATES:
+    description: The alert maps to this technique.
+    source: [Alert]
+    target: [Technique]
+  OBSERVED:
+    description: The alert contained this indicator.
+    source: [Alert]
+    target: [Indicator]
+  PART_OF:
+    description: The alert belongs to this incident.
+    source: [Alert]
+    target: [Incident]
+  INVOLVES:
+    description: The incident involves this entity.
+    source: [Incident]
+    target: [Asset, Identity, AIAgent, DataStore]
+  ATTRIBUTED_TO:
+    description: The incident is attributed to this actor.
+    source: [Incident]
+    target: [ThreatActor]
+
+  # --- threat --------------------------------------------------------------
+  USES:
+    description: The actor is known to use this technique.
+    source: [ThreatActor]
+    target: [Technique]
+  EXPLOITS:
+    description: The actor is known to exploit this vulnerability.
+    source: [ThreatActor]
+    target: [Vulnerability]
+
+  # --- AI plane ------------------------------------------------------------
+  RUNS_ON:
+    description: The agent or model is hosted on this asset.
+    source: [AIAgent, AIModel]
+    target: [Asset]
+  USES_MODEL:
+    description: The agent calls this model.
+    source: [AIAgent]
+    target: [AIModel]
+  CAN_INVOKE:
+    description: The agent is permitted to call this tool.
+    source: [AIAgent]
+    target: [Tool]
+  ACTS_AS:
+    description: The agent operates with this identity's rights.
+    source: [AIAgent]
+    target: [Identity]
+  READS_FROM:
+    description: The agent retrieves content from this data store (retrieval source, knowledge base).
+    source: [AIAgent]
+    target: [DataStore]
+  WRITES_TO:
+    description: The agent can modify this data store.
+    source: [AIAgent]
+    target: [DataStore]
+  TOOL_TARGETS:
+    description: The tool acts on this asset or data store.
+    source: [Tool]
+    target: [Asset, DataStore]
+    properties:
+      effect: {type: enum, values: [read, write, execute]}
+  DELEGATES_TO:
+    description: The agent hands work to another agent.
+    source: [AIAgent]
+    target: [AIAgent]
+
+# =========================================================================== #
+# Attack semantics
+#
+# Every number below is a prior, chosen to be defensible and conservative, and is meant to be
+# calibrated per client (docs/ANALYTICS_MATH.md explains each and how results respond to it).
+# =========================================================================== #
+attack_semantics:
+  # States an attacker can hold: a foothold on an asset, control of an identity, access to data,
+  # control of an agent or tool, or a network position in a segment.
+  compromisable: [Asset, Identity, DataStore, AIAgent, Tool, NetworkSegment]
+
+  bindings:
+    finding_type: Finding
+    vulnerability_type: Vulnerability
+    control_type: Control
+    has_finding_edge: HAS_FINDING
+    instance_of_edge: INSTANCE_OF
+    protects_edge: PROTECTS
+    mitigates_edge: MITIGATES
+    dependency_edges: [SUPPORTS, DEPENDS_ON]
+
+  entries:
+    - name: internet_exposed_asset
+      description: An external attacker exploits an internet-facing asset.
+      node_type: Asset
+      where: {internet_exposed: true}
+      probability: {model: exploitability, floor: 0.02}
+      mitigated_by: [waf, network_ips, virtual_patching]
+      recommended_controls: [patch_management, virtual_patching, waf]
+    - name: internet_segment
+      description: The internet itself, modelled as a segment; what it can reach follows ROUTES_TO.
+      node_type: NetworkSegment
+      where: {zone: internet}
+      probability: {model: fixed, value: 1.0}
+    - name: phishing
+      description: An external attacker phishes a human identity. Disabled by default — enable per engagement.
+      enabled: false
+      node_type: Identity
+      where: {identity_type: human}
+      probability: {model: fixed, value: 0.05}
+      mitigated_by: [mfa, email_security]
+      recommended_controls: [mfa, email_security]
+
+  transitions:
+    - name: network_position
+      description: A foothold on an asset gives a network position in its segment.
+      edge: IN_SEGMENT
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 1.0}
+    - name: routed_access
+      description: A position in one segment reaches every segment it is allowed to route to.
+      edge: ROUTES_TO
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 1.0}
+      mitigated_by: [segmentation]
+      control_on: destination
+      recommended_controls: [segmentation]
+    - name: segment_exploit
+      description: From a position in the segment, the attacker exploits an open finding on an asset in it.
+      edge: IN_SEGMENT
+      attacker_moves: target_to_source
+      probability: {model: exploitability}
+      mitigated_by: [network_ips, virtual_patching, waf]
+      control_on: destination
+      recommended_controls: [patch_management, virtual_patching, network_ips]
+    - name: lateral_exploit
+      description: From one asset, the attacker exploits an open finding on an asset it can connect to.
+      edge: CONNECTS_TO
+      attacker_moves: source_to_target
+      probability: {model: exploitability}
+      mitigated_by: [network_ips, virtual_patching, waf, segmentation]
+      control_on: destination
+      recommended_controls: [patch_management, virtual_patching, segmentation]
+    - name: credential_theft
+      description: The attacker harvests credential material present on a compromised asset.
+      edge: HAS_SESSION
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 0.6}
+      mitigated_by: [credential_guard, edr, pam]
+      control_on: either
+      recommended_controls: [credential_guard, pam]
+    - name: use_access
+      description: The attacker uses a compromised identity's authorisations.
+      edge: HAS_ACCESS
+      attacker_moves: source_to_target
+      probability:
+        model: by_property
+        property: privilege
+        values: {admin: 0.95, write: 0.8, read: 0.6}
+        default: 0.6
+      mitigated_by: [mfa, pam, jit_access]
+      control_on: either
+      recommended_controls: [mfa, pam, jit_access]
+    - name: group_membership
+      description: A compromised identity holds the rights of its groups.
+      edge: MEMBER_OF
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 1.0}
+    - name: data_on_host
+      description: A foothold on a host reaches the data stores it serves.
+      edge: HOSTS
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 0.9}
+      mitigated_by: [encryption_at_rest, dlp]
+      control_on: destination
+      recommended_controls: [encryption_at_rest, dlp]
+    - name: agent_host_takeover
+      description: A foothold on the host running an agent gives control of the agent.
+      edge: RUNS_ON
+      attacker_moves: target_to_source
+      probability: {model: fixed, value: 0.9}
+      mitigated_by: [tool_sandboxing, edr]
+      control_on: either
+      recommended_controls: [tool_sandboxing]
+    - name: indirect_prompt_injection
+      description: Content planted in a store the agent reads from steers the agent.
+      edge: READS_FROM
+      attacker_moves: target_to_source
+      probability: {model: fixed, value: 0.3}
+      mitigated_by: [llm_firewall, semantic_firewall, agent_policy_enforcement]
+      control_on: destination
+      recommended_controls: [semantic_firewall, llm_firewall, agent_policy_enforcement]
+    - name: agent_data_read
+      description: A controlled agent reads what it is allowed to retrieve.
+      edge: READS_FROM
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 0.9}
+      mitigated_by: [agent_policy_enforcement, dlp]
+      control_on: either
+      recommended_controls: [agent_policy_enforcement, dlp]
+    - name: agent_data_write
+      description: A controlled agent modifies the stores it can write to.
+      edge: WRITES_TO
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 0.9}
+      mitigated_by: [agent_policy_enforcement, human_in_the_loop]
+      control_on: either
+      recommended_controls: [agent_policy_enforcement, human_in_the_loop]
+    - name: agent_identity_abuse
+      description: A controlled agent exercises the rights of the identity it acts as.
+      edge: ACTS_AS
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 0.9}
+      mitigated_by: [agent_policy_enforcement, jit_access]
+      control_on: either
+      recommended_controls: [agent_policy_enforcement, jit_access]
+    - name: tool_invocation
+      description: A controlled agent invokes a tool it is permitted to call.
+      edge: CAN_INVOKE
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 0.8}
+      mitigated_by: [agent_policy_enforcement, human_in_the_loop, tool_sandboxing]
+      control_on: either
+      recommended_controls: [agent_policy_enforcement, human_in_the_loop]
+    - name: tool_effect
+      description: A misused tool acts on the assets and data it targets.
+      edge: TOOL_TARGETS
+      attacker_moves: source_to_target
+      probability:
+        model: by_property
+        property: effect
+        values: {execute: 0.9, write: 0.7, read: 0.4}
+        default: 0.4
+      mitigated_by: [tool_sandboxing, human_in_the_loop]
+      control_on: either
+      recommended_controls: [tool_sandboxing, human_in_the_loop]
+    - name: agent_delegation
+      description: A controlled agent passes attacker-influenced work to another agent.
+      edge: DELEGATES_TO
+      attacker_moves: source_to_target
+      probability: {model: fixed, value: 0.5}
+      mitigated_by: [agent_policy_enforcement, llm_firewall]
+      control_on: destination
+      recommended_controls: [agent_policy_enforcement]
+
+  # What the organisation is protecting. A node's impact is the highest of the rules it matches.
+  targets:
+    - name: crown_jewel_asset
+      node_type: Asset
+      where: {crown_jewel: true}
+      impact: {property: criticality, values: {"1": 1, "2": 2, "3": 4, "4": 8, "5": 16}, default: 8}
+    - name: critical_asset
+      node_type: Asset
+      where: {criticality: {gte: 5}}
+      impact: {default: 16}
+    - name: crown_jewel_data
+      node_type: DataStore
+      where: {crown_jewel: true}
+      impact: {property: criticality, values: {"1": 1, "2": 2, "3": 4, "4": 8, "5": 16}, default: 12}
+    - name: restricted_data
+      node_type: DataStore
+      where: {classification: restricted}
+      impact: {default: 12}
+    - name: personal_data
+      node_type: DataStore
+      where: {contains_pii: true}
+      impact: {default: 10}
+    - name: privileged_identity
+      node_type: Identity
+      where: {privileged: true}
+      impact: {default: 8}
+    - name: crown_jewel_agent
+      node_type: AIAgent
+      where: {crown_jewel: true}
+      impact: {property: criticality, values: {"1": 1, "2": 2, "3": 4, "4": 8, "5": 16}, default: 8}
+
+  # Probability that one open finding can be exploited by an attacker already in position.
+  #   p = min(max_probability, max(kev_floor if kev, epss_weight * epss, cvss term, unknown_default))
+  #   cvss term = cvss_vector_weight * E(vector)   when a CVSS v3/v4 vector is known
+  #             = cvss_score_weight  * score / 10  when only the base score is known
+  exploitability:
+    open_statuses: [open, in_progress, reopened, risk_accepted]
+    kev_floor: 0.9
+    epss_weight: 1.0
+    cvss_vector_weight: 0.6
+    cvss_score_weight: 0.3
+    unknown_default: 0.05
+    remote_vectors: [network, adjacent]
+    unknown_vector_is_remote: true
+    max_probability: 0.99
+
+  # A control multiplies a step's probability by (1 - effectiveness).
+  controls:
+    default_effectiveness:
+      waf: 0.6
+      network_ips: 0.5
+      virtual_patching: 0.8
+      segmentation: 0.7
+      firewall: 0.5
+      mfa: 0.9
+      pam: 0.7
+      jit_access: 0.6
+      credential_guard: 0.7
+      edr: 0.5
+      ndr: 0.4
+      siem_detection: 0.4
+      deception: 0.3
+      encryption_at_rest: 0.7
+      dlp: 0.4
+      email_security: 0.6
+      patch_management: 0.5
+      app_allowlisting: 0.6
+      llm_firewall: 0.6
+      semantic_firewall: 0.6
+      agent_policy_enforcement: 0.7
+      tool_sandboxing: 0.6
+      human_in_the_loop: 0.8
+    fallback_effectiveness: 0.5
+    degraded_factor: 0.5
+    active_statuses: [active]
+    degraded_statuses: [degraded]
+    detection_types: [edr, ndr, siem_detection, deception]
+    detection_base: 0.02
+    detection_weight: 0.3
+    max_combined_reduction: 0.99

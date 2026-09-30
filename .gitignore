@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+
+# Local state — never commit
+.env
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+vault/
+wheelhouse/
+airgap-bundle/
+*.tar
+*.tar.gz
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
