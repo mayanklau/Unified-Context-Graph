@@ -67,9 +67,8 @@ class AnalyticsService:
         self.ontology = ontology
         self.settings = settings
         self.sem = ontology.attack_semantics
-        self._rules: dict[str, TransitionRule | EntryRule] = {
-            rule.name: rule for rule in (*self.sem.transitions, *self.sem.entries)
-        }
+        self._rules: dict[str, TransitionRule | EntryRule] = {rule.name: rule for rule in self.sem.transitions}
+        self._rules.update({rule.name: rule for rule in self.sem.entries})
         self._graphs: dict[str, AttackGraph] = {}
         self._locks: dict[str, threading.Lock] = {}
         self._guard = threading.Lock()
@@ -116,7 +115,7 @@ class AnalyticsService:
     def _baseline(self, graph: AttackGraph) -> _Baseline:
         cached = graph.memo.get("baseline")
         if cached is not None:
-            return cached  # type: ignore[no-any-return]
+            return cached
         ex = graph.expand()
         n = graph.state_count
         fwd = forward_reachable(ex.vertices, ex.src, ex.dst, ex.p, [ATTACKER_INDEX])
@@ -154,7 +153,7 @@ class AnalyticsService:
     def _estimate_targets(self, graph: AttackGraph, base: _Baseline) -> tuple[np.ndarray, np.ndarray, str, int]:
         cached = graph.memo.get("estimate")
         if cached is not None:
-            return cached  # type: ignore[no-any-return]
+            return cached
         ex = graph.expand()
         idx = base.edge_index
         result = estimate_reach(
@@ -308,7 +307,12 @@ class AnalyticsService:
     # Public analytics
     # ------------------------------------------------------------------ #
     def overview(
-        self, tenant_id: str, scope: AccessScope, *, limit: int = 10, estimate: bool = True,
+        self,
+        tenant_id: str,
+        scope: AccessScope,
+        *,
+        limit: int = 10,
+        estimate: bool = True,
         as_of: datetime | None = None,
     ) -> dict[str, Any]:
         """Where the organisation stands: entry points, crown jewels at risk and expected impact."""
@@ -331,7 +335,7 @@ class AnalyticsService:
             if est is not None:
                 risk["estimate"] = _round(sum(r[2]["estimate"] * float(graph.impact[r[1]]) for r in rows))
             exposures = [e for items in graph.exposures.values() for e in items]
-            entry_steps = [s for s in graph.out_steps()[ATTACKER_INDEX]]
+            entry_steps = list(graph.out_steps()[ATTACKER_INDEX])
             return {
                 "graph": self._meta(graph),
                 "entry_points": len({int(graph.step_dst[s]) for s in entry_steps}),
@@ -386,8 +390,16 @@ class AnalyticsService:
                     raise ValidationFailed("source and target are the same node")
                 allowed = backward_reachable(n, graph.step_src, graph.step_dst, graph.step_prob, [target])
                 paths = k_best_paths(
-                    n, adjacency, base.step_src, base.step_dst, base.costs, source, target, k,
-                    allowed=allowed, max_cost=max_cost,
+                    n,
+                    adjacency,
+                    base.step_src,
+                    base.step_dst,
+                    base.costs,
+                    source,
+                    target,
+                    k,
+                    allowed=allowed,
+                    max_cost=max_cost,
                 )
             else:
                 if source == ATTACKER_INDEX:
@@ -411,8 +423,9 @@ class AnalyticsService:
                     view["target_compromise"] = self._probability_view(base, path.nodes[-1], est)
             return {
                 "graph": self._meta(graph),
-                "source": self._node(graph, viewer, source) if source != ATTACKER_INDEX else {
-                    "id": None, "type": "Attacker", "name": "External attacker"},
+                "source": self._node(graph, viewer, source)
+                if source != ATTACKER_INDEX
+                else {"id": None, "type": "Attacker", "name": "External attacker"},
                 "paths": views,
                 "note": (
                     "Path probability is the product of its step probabilities. "
@@ -438,8 +451,12 @@ class AnalyticsService:
             upper, _ = noisy_or_bound(ex.vertices, ex.src[edges], ex.dst[edges], ex.p[edges])
             lower = math.exp(-base.lower_cost[idx]) if math.isfinite(base.lower_cost[idx]) else 0.0
             est = estimate_reach(
-                ex.vertices, ex.src[edges], ex.dst[edges], ex.p[edges],
-                samples=self.settings.analytics_mc_samples, seed=self.settings.analytics_seed,
+                ex.vertices,
+                ex.src[edges],
+                ex.dst[edges],
+                ex.p[edges],
+                samples=self.settings.analytics_mc_samples,
+                seed=self.settings.analytics_seed,
                 budget=self.settings.analytics_mc_budget,
             )
             probability = {
@@ -502,8 +519,12 @@ class AnalyticsService:
             p = np.concatenate([ex.p[keep], [1.0]])
             upper, _ = noisy_or_bound(ex.vertices, src, dst, p)
             est = estimate_reach(
-                ex.vertices, src, dst, p,
-                samples=self.settings.analytics_mc_samples, seed=self.settings.analytics_seed,
+                ex.vertices,
+                src,
+                dst,
+                p,
+                samples=self.settings.analytics_mc_samples,
+                seed=self.settings.analytics_seed,
                 budget=self.settings.analytics_mc_budget,
             )
             cost, _parent = best_path_tree(n, graph.out_steps(), base.step_dst, base.costs, origin)
@@ -752,7 +773,7 @@ class AnalyticsService:
                 p[(ex.src == node) | (ex.dst == node)] = 0.0
                 risk_after, _upper = self._upper_risk(graph, base, p)
                 reduction = max(0.0, risk_before - risk_after - float(graph.impact[node] * base.upper[node]))
-                steps_in = [s for s in graph.in_steps()[node]]
+                steps_in = list(graph.in_steps()[node])
                 recommended: list[str] = []
                 for step in steps_in:
                     rule = self._rules[graph.step_rule[step]]
@@ -765,7 +786,8 @@ class AnalyticsService:
                         **self._node(graph, viewer, node),
                         "risk_reduction": _round(reduction),
                         "risk_reduction_percent": _round(100.0 * reduction / risk_before, 2)
-                        if risk_before > 0 else 0.0,
+                        if risk_before > 0
+                        else 0.0,
                         "best_paths_through": paths_through,
                         "compromise_probability_upper": _round(float(base.upper[node])),
                         "recommended_controls": recommended[:6],
@@ -833,8 +855,11 @@ class AnalyticsService:
         """The model, in full: every rule and number the results depend on."""
         sem = self.sem
         return {
-            "ontology": {"name": self.ontology.name, "version": self.ontology.version,
-                         "fingerprint": self.ontology.fingerprint()},
+            "ontology": {
+                "name": self.ontology.name,
+                "version": self.ontology.version,
+                "fingerprint": self.ontology.fingerprint(),
+            },
             "attacker_states": list(sem.compromisable),
             "entries": [r.model_dump(mode="json") for r in sem.entries],
             "transitions": [r.model_dump(mode="json") for r in sem.transitions],

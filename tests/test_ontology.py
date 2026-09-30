@@ -13,7 +13,13 @@ from secgraph.errors import OntologyError, ValidationFailed
 from secgraph.ontology import load_ontology, parse_ontology
 from secgraph.ontology.docs import render_markdown
 from secgraph.ontology.normalize import normalize_identifier
-from secgraph.ontology.validate import coerce_properties, format_datetime, matches, normalize_identifiers, parse_datetime
+from secgraph.ontology.validate import (
+    coerce_properties,
+    format_datetime,
+    matches,
+    normalize_identifiers,
+    parse_datetime,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -47,27 +53,35 @@ def _broken(document, mutate):
     return " ".join(excinfo.value.detail.get("errors", [])) + excinfo.value.message
 
 
-@pytest.mark.parametrize("mutate, expected", [
-    (lambda d: d["edge_types"]["RUNS"].__setitem__("target", ["Nope"]), "unknown node type 'Nope'"),
-    (lambda d: d["ontology"].__setitem__("version", "one"), "semantic"),
-    (lambda d: d["node_types"].__setitem__("bad_name", d["node_types"]["Asset"]), "PascalCase"),
-    (lambda d: d["edge_types"].__setitem__("badEdge", d["edge_types"]["RUNS"]), "UPPER_SNAKE_CASE"),
-    (lambda d: d["node_types"]["Asset"].__setitem__("identifiers", []), "at least one identifier"),
-    (lambda d: d["node_types"]["Finding"]["identifiers"][0].__setitem__("weak", True), "strong, matchable"),
-    (lambda d: d["node_types"]["Asset"]["properties"].__setitem__("BadProp", {"type": "string"}), "snake_case"),
-    (lambda d: d["node_types"]["Asset"]["properties"].__setitem__("x", {"type": "enum"}), "enum properties"),
-    (lambda d: d["node_types"]["Asset"].__setitem__("surprise", 1), "Extra inputs"),
-    (lambda d: d["attack_semantics"]["transitions"][0].__setitem__("edge", "NOPE"), "unknown edge type 'NOPE'"),
-    (lambda d: d["attack_semantics"]["transitions"][0]["probability"].__setitem__("value", 1.5), "within [0, 1]"),
-    (lambda d: d["attack_semantics"]["transitions"].append(dict(d["attack_semantics"]["transitions"][0])),
-     "duplicate transition"),
-    (lambda d: d["attack_semantics"]["compromisable"].append("Ghost"), "unknown node type 'Ghost'"),
-    (lambda d: d["attack_semantics"]["targets"][0].__setitem__("node_type", "Finding"), "not compromisable"),
-    (lambda d: d["attack_semantics"]["entries"][0].__setitem__("where", {"x": {"bogus": 1}}), "invalid predicate"),
-    (lambda d: d["attack_semantics"]["bindings"].__setitem__("protects_edge", "NOPE"), "unknown edge type"),
-    (lambda d: d["node_types"]["Asset"].__setitem__("name_from", ["ghost"]), "name_from references unknown"),
-    (lambda d: d["node_types"]["Asset"]["identifiers"][6].__setitem__("derived_from", "ghost"), "derives from unknown"),
-])
+@pytest.mark.parametrize(
+    "mutate, expected",
+    [
+        (lambda d: d["edge_types"]["RUNS"].__setitem__("target", ["Nope"]), "unknown node type 'Nope'"),
+        (lambda d: d["ontology"].__setitem__("version", "one"), "semantic"),
+        (lambda d: d["node_types"].__setitem__("bad_name", d["node_types"]["Asset"]), "PascalCase"),
+        (lambda d: d["edge_types"].__setitem__("badEdge", d["edge_types"]["RUNS"]), "UPPER_SNAKE_CASE"),
+        (lambda d: d["node_types"]["Asset"].__setitem__("identifiers", []), "at least one identifier"),
+        (lambda d: d["node_types"]["Finding"]["identifiers"][0].__setitem__("weak", True), "strong, matchable"),
+        (lambda d: d["node_types"]["Asset"]["properties"].__setitem__("BadProp", {"type": "string"}), "snake_case"),
+        (lambda d: d["node_types"]["Asset"]["properties"].__setitem__("x", {"type": "enum"}), "enum properties"),
+        (lambda d: d["node_types"]["Asset"].__setitem__("surprise", 1), "Extra inputs"),
+        (lambda d: d["attack_semantics"]["transitions"][0].__setitem__("edge", "NOPE"), "unknown edge type 'NOPE'"),
+        (lambda d: d["attack_semantics"]["transitions"][0]["probability"].__setitem__("value", 1.5), "within [0, 1]"),
+        (
+            lambda d: d["attack_semantics"]["transitions"].append(dict(d["attack_semantics"]["transitions"][0])),
+            "duplicate transition",
+        ),
+        (lambda d: d["attack_semantics"]["compromisable"].append("Ghost"), "unknown node type 'Ghost'"),
+        (lambda d: d["attack_semantics"]["targets"][0].__setitem__("node_type", "Finding"), "not compromisable"),
+        (lambda d: d["attack_semantics"]["entries"][0].__setitem__("where", {"x": {"bogus": 1}}), "invalid predicate"),
+        (lambda d: d["attack_semantics"]["bindings"].__setitem__("protects_edge", "NOPE"), "unknown edge type"),
+        (lambda d: d["node_types"]["Asset"].__setitem__("name_from", ["ghost"]), "name_from references unknown"),
+        (
+            lambda d: d["node_types"]["Asset"]["identifiers"][6].__setitem__("derived_from", "ghost"),
+            "derives from unknown",
+        ),
+    ],
+)
 def test_invalid_ontologies_are_rejected_with_a_reason(document, mutate, expected):
     assert expected in _broken(document, mutate)
 
@@ -95,25 +109,28 @@ def test_custom_ontology_file(tmp_path, document):
 
 
 # ---- normalisation ----------------------------------------------------------
-@pytest.mark.parametrize("normalizer, raw, expected", [
-    ("fqdn", "WEB-01.Corp.Example.", "web-01.corp.example"),
-    ("hostname", "WEB-01", "web-01"),
-    ("hostname", "web-01.corp.example", "web-01"),
-    ("mac", "00-1A-2B-3C-4D-5E", "00:1a:2b:3c:4d:5e"),
-    ("mac", "001a.2b3c.4d5e", "00:1a:2b:3c:4d:5e"),
-    ("ip", "010.0.0.1", None),
-    ("ip", "10.0.0.1", "10.0.0.1"),
-    ("ip", "2001:DB8::1", "2001:db8::1"),
-    ("cidr", "10.1.2.3/24", "10.1.2.0/24"),
-    ("cve", "cve-2021-44228", "CVE-2021-44228"),
-    ("attack_id", "t1059.001", "T1059.001"),
-    ("attack_id", "aml.t0051", "AML.T0051"),
-    ("email", "Asha.Rao@Example.COM", "asha.rao@example.com"),
-    ("purl", "PKG:Maven/org.apache/log4j-core@2.14.1", "pkg:maven/org.apache/log4j-core@2.14.1"),
-    ("cpe", "CPE:2.3:a:F5:nginx:1.18.0", "cpe:2.3:a:f5:nginx:1.18.0"),
-    ("upper", "sn-1", "SN-1"),
-    ("none", " Keep Case ", "Keep Case"),
-])
+@pytest.mark.parametrize(
+    "normalizer, raw, expected",
+    [
+        ("fqdn", "WEB-01.Corp.Example.", "web-01.corp.example"),
+        ("hostname", "WEB-01", "web-01"),
+        ("hostname", "web-01.corp.example", "web-01"),
+        ("mac", "00-1A-2B-3C-4D-5E", "00:1a:2b:3c:4d:5e"),
+        ("mac", "001a.2b3c.4d5e", "00:1a:2b:3c:4d:5e"),
+        ("ip", "010.0.0.1", None),
+        ("ip", "10.0.0.1", "10.0.0.1"),
+        ("ip", "2001:DB8::1", "2001:db8::1"),
+        ("cidr", "10.1.2.3/24", "10.1.2.0/24"),
+        ("cve", "cve-2021-44228", "CVE-2021-44228"),
+        ("attack_id", "t1059.001", "T1059.001"),
+        ("attack_id", "aml.t0051", "AML.T0051"),
+        ("email", "Asha.Rao@Example.COM", "asha.rao@example.com"),
+        ("purl", "PKG:Maven/org.apache/log4j-core@2.14.1", "pkg:maven/org.apache/log4j-core@2.14.1"),
+        ("cpe", "CPE:2.3:a:F5:nginx:1.18.0", "cpe:2.3:a:f5:nginx:1.18.0"),
+        ("upper", "sn-1", "SN-1"),
+        ("none", " Keep Case ", "Keep Case"),
+    ],
+)
 def test_identifier_normalisation(normalizer, raw, expected):
     if expected is None:
         with pytest.raises(ValidationFailed):
@@ -122,12 +139,28 @@ def test_identifier_normalisation(normalizer, raw, expected):
         assert normalize_identifier(normalizer, "k", raw) == expected
 
 
-@pytest.mark.parametrize("normalizer, raw", [
-    ("fqdn", "nodots"), ("fqdn", "bad host.example"), ("mac", "zz:zz"), ("cve", "CVE-21-1"), ("attack_id", "X9"),
-    ("email", "no-at-sign"), ("email", "a@b@c"), ("purl", "maven/x"), ("cpe", "x"), ("lower", ""), ("lower", "   "),
-    ("lower", "a\x00b"), ("lower", "x" * 600), ("lower", True), ("lower", ["a"]), ("hostname", "-bad-"),
-    ("cidr", "10.0.0.0/99"),
-])
+@pytest.mark.parametrize(
+    "normalizer, raw",
+    [
+        ("fqdn", "nodots"),
+        ("fqdn", "bad host.example"),
+        ("mac", "zz:zz"),
+        ("cve", "CVE-21-1"),
+        ("attack_id", "X9"),
+        ("email", "no-at-sign"),
+        ("email", "a@b@c"),
+        ("purl", "maven/x"),
+        ("cpe", "x"),
+        ("lower", ""),
+        ("lower", "   "),
+        ("lower", "a\x00b"),
+        ("lower", "x" * 600),
+        ("lower", True),
+        ("lower", ["a"]),
+        ("hostname", "-bad-"),
+        ("cidr", "10.0.0.0/99"),
+    ],
+)
 def test_invalid_identifiers_are_rejected(normalizer, raw):
     with pytest.raises(ValidationFailed):
         normalize_identifier(normalizer, "k", raw)
@@ -135,8 +168,9 @@ def test_invalid_identifiers_are_rejected(normalizer, raw):
 
 def test_identifier_sets(ontology):
     asset = ontology.node_types["Asset"]
-    pairs = normalize_identifiers("Asset", asset, {"ip": ["10.0.0.2", "10.0.0.1", "10.0.0.2"],
-                                                   "fqdn": "A.corp.example"})
+    pairs = normalize_identifiers(
+        "Asset", asset, {"ip": ["10.0.0.2", "10.0.0.1", "10.0.0.2"], "fqdn": "A.corp.example"}
+    )
     assert pairs == [("fqdn", "a.corp.example"), ("hostname", "a"), ("ip", "10.0.0.2"), ("ip", "10.0.0.1")]
     explicit = normalize_identifiers("Asset", asset, {"fqdn": "a.corp.example", "hostname": "alias"})
     assert ("hostname", "alias") in explicit and ("hostname", "a") not in explicit  # given beats derived
@@ -156,40 +190,74 @@ def test_identifier_sets(ontology):
 # ---- property coercion ------------------------------------------------------
 def coerce(ontology, node_type, properties, **kwargs):
     definition = ontology.node_types[node_type]
-    return coerce_properties(node_type, definition.properties, definition.additional_properties, properties,
-                             enforce_required=kwargs.get("enforce_required", False),
-                             max_bytes=kwargs.get("max_bytes", 65536))
+    return coerce_properties(
+        node_type,
+        definition.properties,
+        definition.additional_properties,
+        properties,
+        enforce_required=kwargs.get("enforce_required", False),
+        max_bytes=kwargs.get("max_bytes", 65536),
+    )
 
 
 def test_coercion_of_messy_but_unambiguous_values(ontology):
-    assert coerce(ontology, "Asset", {"criticality": "4", "internet_exposed": "Yes", "crown_jewel": 0,
-                                      "environment": "Production", "os": 22, "custom.tag": ["a"], "owner": None}) == {
-        "criticality": 4, "internet_exposed": True, "crown_jewel": False, "environment": "production", "os": "22",
-        "custom.tag": ["a"], "owner": None}
-    vuln = coerce(ontology, "Vulnerability", {"cvss_score": "9.8", "cwe": "CWE-79, CWE-89,CWE-79",
-                                              "published": "2024-03-01", "kev_date_added": 1700000000})
-    assert vuln == {"cvss_score": 9.8, "cwe": ["CWE-79", "CWE-89"], "published": "2024-03-01T00:00:00Z",
-                    "kev_date_added": "2023-11-14T22:13:20Z"}
+    assert coerce(
+        ontology,
+        "Asset",
+        {
+            "criticality": "4",
+            "internet_exposed": "Yes",
+            "crown_jewel": 0,
+            "environment": "Production",
+            "os": 22,
+            "custom.tag": ["a"],
+            "owner": None,
+        },
+    ) == {
+        "criticality": 4,
+        "internet_exposed": True,
+        "crown_jewel": False,
+        "environment": "production",
+        "os": "22",
+        "custom.tag": ["a"],
+        "owner": None,
+    }
+    vuln = coerce(
+        ontology,
+        "Vulnerability",
+        {"cvss_score": "9.8", "cwe": "CWE-79, CWE-89,CWE-79", "published": "2024-03-01", "kev_date_added": 1700000000},
+    )
+    assert vuln == {
+        "cvss_score": 9.8,
+        "cwe": ["CWE-79", "CWE-89"],
+        "published": "2024-03-01T00:00:00Z",
+        "kev_date_added": "2023-11-14T22:13:20Z",
+    }
     assert coerce(ontology, "Finding", {"status": "Risk Accepted", "severity": "HIGH"}) == {
-        "status": "risk_accepted", "severity": "high"}
+        "status": "risk_accepted",
+        "severity": "high",
+    }
 
 
-@pytest.mark.parametrize("node_type, properties, reason", [
-    ("Asset", {"criticality": 9}, "above the maximum 5"),
-    ("Asset", {"criticality": 0}, "below the minimum 1"),
-    ("Asset", {"criticality": 2.5}, "whole number"),
-    ("Asset", {"criticality": "many"}, "expected a number"),
-    ("Asset", {"criticality": True}, "expected a number"),
-    ("Asset", {"internet_exposed": "maybe"}, "expected true or false"),
-    ("Asset", {"environment": "moon"}, "is not one of"),
-    ("Asset", {"os": {"nested": 1}}, "expected a string"),
-    ("Asset", {"name": "x" * 300}, "longer than 256"),
-    ("Asset", {"bad name!": 1}, "property names"),
-    ("Vulnerability", {"published": "yesterday"}, "unrecognised timestamp"),
-    ("Vulnerability", {"cwe": [{"a": 1}]}, "list of strings"),
-    ("Vulnerability", {"cvss_score": float("nan")}, "finite"),
-    ("Vulnerability", {"epss": 1.2}, "above the maximum 1"),
-])
+@pytest.mark.parametrize(
+    "node_type, properties, reason",
+    [
+        ("Asset", {"criticality": 9}, "above the maximum 5"),
+        ("Asset", {"criticality": 0}, "below the minimum 1"),
+        ("Asset", {"criticality": 2.5}, "whole number"),
+        ("Asset", {"criticality": "many"}, "expected a number"),
+        ("Asset", {"criticality": True}, "expected a number"),
+        ("Asset", {"internet_exposed": "maybe"}, "expected true or false"),
+        ("Asset", {"environment": "moon"}, "is not one of"),
+        ("Asset", {"os": {"nested": 1}}, "expected a string"),
+        ("Asset", {"name": "x" * 300}, "longer than 256"),
+        ("Asset", {"bad name!": 1}, "property names"),
+        ("Vulnerability", {"published": "yesterday"}, "unrecognised timestamp"),
+        ("Vulnerability", {"cwe": [{"a": 1}]}, "list of strings"),
+        ("Vulnerability", {"cvss_score": float("nan")}, "finite"),
+        ("Vulnerability", {"epss": 1.2}, "above the maximum 1"),
+    ],
+)
 def test_coercion_rejects_with_a_precise_reason(ontology, node_type, properties, reason):
     with pytest.raises(ValidationFailed) as excinfo:
         coerce(ontology, node_type, properties)
@@ -204,15 +272,18 @@ def test_required_and_size_limits(ontology):
         coerce(ontology, "Asset", {"notes": "x" * 3000}, max_bytes=1000)
 
 
-@pytest.mark.parametrize("value, expected", [
-    ("2026-09-30T10:00:00Z", "2026-09-30T10:00:00Z"),
-    ("2026-09-30T15:30:00+05:30", "2026-09-30T10:00:00Z"),
-    ("2026-09-30 10:00:00", "2026-09-30T10:00:00Z"),
-    ("30/09/2026", "2026-09-30T00:00:00Z"),
-    (1790000000, "2026-09-21T14:13:20Z"),
-    (1790000000000, "2026-09-21T14:13:20Z"),
-    (datetime(2026, 1, 1, tzinfo=UTC), "2026-01-01T00:00:00Z"),
-])
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("2026-09-30T10:00:00Z", "2026-09-30T10:00:00Z"),
+        ("2026-09-30T15:30:00+05:30", "2026-09-30T10:00:00Z"),
+        ("2026-09-30 10:00:00", "2026-09-30T10:00:00Z"),
+        ("30/09/2026", "2026-09-30T00:00:00Z"),
+        (1790000000, "2026-09-21T14:13:20Z"),
+        (1790000000000, "2026-09-21T14:13:20Z"),
+        (datetime(2026, 1, 1, tzinfo=UTC), "2026-01-01T00:00:00Z"),
+    ],
+)
 def test_timestamps(value, expected):
     assert format_datetime(parse_datetime(value)) == expected
 

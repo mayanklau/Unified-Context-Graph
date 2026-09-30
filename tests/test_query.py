@@ -23,21 +23,48 @@ def estate(load):
     """A small estate: two assets, software, a KEV finding, an identity with access."""
     result = load(
         nodes=[
-            {"type": "Asset", "identifiers": {"fqdn": "web-01.dmz.example", "ip": "203.0.113.10"},
-             "properties": {"internet_exposed": True, "criticality": 3, "environment": "production"}, "ref": "web"},
-            {"type": "Asset", "identifiers": {"fqdn": "db-01.core.example"},
-             "properties": {"criticality": 5, "crown_jewel": True}, "ref": "db"},
-            {"type": "Software", "identifiers": {"purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"},
-             "properties": {"name": "log4j-core", "version": "2.14.1"}, "ref": "sw"},
-            {"type": "Vulnerability", "identifiers": {"cve": "CVE-2021-44228"},
-             "properties": {"cvss_score": 10.0, "kev": True, "epss": 0.97, "cwe": ["CWE-502", "CWE-917"]},
-             "ref": "cve"},
-            {"type": "Finding", "identifiers": {"finding_key": "scan:web-01:CVE-2021-44228"},
-             "properties": {"status": "open", "severity": "critical"}, "ref": "f"},
-            {"type": "Finding", "identifiers": {"finding_key": "scan:db-01:old"},
-             "properties": {"status": "resolved", "severity": "low"}, "ref": "f2"},
-            {"type": "Identity", "identifiers": {"upn": "asha.rao@example.com", "account": "corp\\arao"},
-             "properties": {"display_name": "Asha Rao", "identity_type": "human", "privileged": True}, "ref": "id"},
+            {
+                "type": "Asset",
+                "identifiers": {"fqdn": "web-01.dmz.example", "ip": "203.0.113.10"},
+                "properties": {"internet_exposed": True, "criticality": 3, "environment": "production"},
+                "ref": "web",
+            },
+            {
+                "type": "Asset",
+                "identifiers": {"fqdn": "db-01.core.example"},
+                "properties": {"criticality": 5, "crown_jewel": True},
+                "ref": "db",
+            },
+            {
+                "type": "Software",
+                "identifiers": {"purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"},
+                "properties": {"name": "log4j-core", "version": "2.14.1"},
+                "ref": "sw",
+            },
+            {
+                "type": "Vulnerability",
+                "identifiers": {"cve": "CVE-2021-44228"},
+                "properties": {"cvss_score": 10.0, "kev": True, "epss": 0.97, "cwe": ["CWE-502", "CWE-917"]},
+                "ref": "cve",
+            },
+            {
+                "type": "Finding",
+                "identifiers": {"finding_key": "scan:web-01:CVE-2021-44228"},
+                "properties": {"status": "open", "severity": "critical"},
+                "ref": "f",
+            },
+            {
+                "type": "Finding",
+                "identifiers": {"finding_key": "scan:db-01:old"},
+                "properties": {"status": "resolved", "severity": "low"},
+                "ref": "f2",
+            },
+            {
+                "type": "Identity",
+                "identifiers": {"upn": "asha.rao@example.com", "account": "corp\\arao"},
+                "properties": {"display_name": "Asha Rao", "identity_type": "human", "privileged": True},
+                "ref": "id",
+            },
         ],
         edges=[
             {"type": "RUNS", "source": {"ref": "web"}, "target": {"ref": "sw"}},
@@ -45,9 +72,19 @@ def estate(load):
             {"type": "HAS_FINDING", "source": {"ref": "db"}, "target": {"ref": "f2"}},
             {"type": "INSTANCE_OF", "source": {"ref": "f"}, "target": {"ref": "cve"}},
             {"type": "AFFECTS", "source": {"ref": "cve"}, "target": {"ref": "sw"}},
-            {"type": "CONNECTS_TO", "source": {"ref": "web"}, "target": {"ref": "db"}, "key": "tcp/5432",
-             "properties": {"port": 5432, "protocol": "tcp"}},
-            {"type": "HAS_ACCESS", "source": {"ref": "id"}, "target": {"ref": "db"}, "properties": {"privilege": "admin"}},
+            {
+                "type": "CONNECTS_TO",
+                "source": {"ref": "web"},
+                "target": {"ref": "db"},
+                "key": "tcp/5432",
+                "properties": {"port": 5432, "protocol": "tcp"},
+            },
+            {
+                "type": "HAS_ACCESS",
+                "source": {"ref": "id"},
+                "target": {"ref": "db"},
+                "properties": {"privilege": "admin"},
+            },
         ],
     )
     assert not result.rejections
@@ -68,10 +105,12 @@ def test_get_node_includes_identifiers_and_degree(db, tenant, query, estate):
 def test_find_by_identifier_normalises(db, tenant, query, estate):
     with db.transaction() as s:
         by_ip = query.find_by_identifier(s, tenant, FULL_SCOPE, value="203.0.113.10")
-        by_fqdn = query.find_by_identifier(s, tenant, FULL_SCOPE, value="WEB-01.DMZ.EXAMPLE.", node_type="Asset",
-                                           kind="fqdn")
-        by_cve = query.find_by_identifier(s, tenant, FULL_SCOPE, value="cve-2021-44228", node_type="Vulnerability",
-                                          kind="cve")
+        by_fqdn = query.find_by_identifier(
+            s, tenant, FULL_SCOPE, value="WEB-01.DMZ.EXAMPLE.", node_type="Asset", kind="fqdn"
+        )
+        by_cve = query.find_by_identifier(
+            s, tenant, FULL_SCOPE, value="cve-2021-44228", node_type="Vulnerability", kind="cve"
+        )
         nothing = query.find_by_identifier(s, tenant, FULL_SCOPE, value="no-such-thing")
     assert [n["id"] for n in by_ip] == [estate["web"]]
     assert [n["id"] for n in by_fqdn] == [estate["web"]]
@@ -82,7 +121,8 @@ def test_find_by_identifier_normalises(db, tenant, query, estate):
 def test_search_text_types_and_property_filters(db, tenant, query, estate):
     with db.transaction() as s:
         assert [n["id"] for n in query.search(s, tenant, FULL_SCOPE, types=["Asset"], text="WEB-0")["items"]] == [
-            estate["web"]]
+            estate["web"]
+        ]
         assert query.search(s, tenant, FULL_SCOPE, text="WEB-0")["total"] == 2  # the finding's key matches too
         assets = query.search(s, tenant, FULL_SCOPE, types=["Asset"])
         assert assets["total"] == 2
@@ -92,8 +132,9 @@ def test_search_text_types_and_property_filters(db, tenant, query, estate):
         assert [n["id"] for n in critical["items"]] == [estate["db"]]
         between = query.search(s, tenant, FULL_SCOPE, types=["Asset"], where={"criticality": {"gt": 2, "lt": 5}})
         assert [n["id"] for n in between["items"]] == [estate["web"]]
-        open_findings = query.search(s, tenant, FULL_SCOPE, types=["Finding"],
-                                     where={"status": {"in": ["open", "in_progress"]}})
+        open_findings = query.search(
+            s, tenant, FULL_SCOPE, types=["Finding"], where={"status": {"in": ["open", "in_progress"]}}
+        )
         assert [n["id"] for n in open_findings["items"]] == [estate["f"]]
         not_open = query.search(s, tenant, FULL_SCOPE, types=["Finding"], where={"status": {"ne": "open"}})
         assert [n["id"] for n in not_open["items"]] == [estate["f2"]]
@@ -163,8 +204,15 @@ def test_shortest_path_directed_and_undirected(db, tenant, query, estate):
         directed = query.shortest_path(s, tenant, estate["web"], estate["cve"], FULL_SCOPE, directed=True)
         assert directed["length"] == 2
         assert [e["type"] for e in directed["edges"]] == ["HAS_FINDING", "INSTANCE_OF"]
-        none = query.shortest_path(s, tenant, estate["cve"], estate["web"], FULL_SCOPE, directed=True,
-                                   edge_types=["HAS_FINDING", "INSTANCE_OF"])
+        none = query.shortest_path(
+            s,
+            tenant,
+            estate["cve"],
+            estate["web"],
+            FULL_SCOPE,
+            directed=True,
+            edge_types=["HAS_FINDING", "INSTANCE_OF"],
+        )
         assert none["found"] is False
         same = query.shortest_path(s, tenant, estate["web"], estate["web"], FULL_SCOPE)
         assert same["length"] == 0
@@ -179,8 +227,10 @@ def test_shortest_path_matches_reference_bfs_on_random_graphs(db, tenant, query,
         a, b = rng.randrange(n), rng.randrange(n)
         if a != b:
             pairs.add((a, b))
-    refs = load(nodes=nodes, edges=[{"type": "CONNECTS_TO", "source": {"ref": f"n{a}"}, "target": {"ref": f"n{b}"}}
-                                    for a, b in pairs]).refs
+    refs = load(
+        nodes=nodes,
+        edges=[{"type": "CONNECTS_TO", "source": {"ref": f"n{a}"}, "target": {"ref": f"n{b}"}} for a, b in pairs],
+    ).refs
     forward: dict[int, set[int]] = {}
     undirected: dict[int, set[int]] = {}
     for a, b in pairs:
@@ -205,8 +255,9 @@ def test_shortest_path_matches_reference_bfs_on_random_graphs(db, tenant, query,
             a, b = rng.randrange(n), rng.randrange(n)
             for directed, adjacency in ((True, forward), (False, undirected)):
                 expected = reference(adjacency, a, b)
-                got = query.shortest_path(s, tenant, refs[f"n{a}"], refs[f"n{b}"], FULL_SCOPE, directed=directed,
-                                          max_depth=6)
+                got = query.shortest_path(
+                    s, tenant, refs[f"n{a}"], refs[f"n{b}"], FULL_SCOPE, directed=directed, max_depth=6
+                )
                 if expected is None or expected > 6:
                     assert got["found"] is False, (a, b, directed)
                 else:
@@ -232,16 +283,32 @@ def test_pattern_match_internet_exposed_assets_with_open_kev_findings(db, tenant
         assert result["count"] == 1 and result["truncated"] is False
         assert [n["id"] for n in result["matches"][0]["nodes"]] == [estate["web"], estate["f"], estate["cve"]]
         # edge predicates and inbound steps
-        who = query.match(s, tenant, {
-            "start": {"id": estate["db"]},
-            "steps": [{"edge": "HAS_ACCESS", "direction": "in", "where": {"privilege": "admin"},
-                       "node": {"type": "Identity"}}],
-        }, FULL_SCOPE)
+        who = query.match(
+            s,
+            tenant,
+            {
+                "start": {"id": estate["db"]},
+                "steps": [
+                    {
+                        "edge": "HAS_ACCESS",
+                        "direction": "in",
+                        "where": {"privilege": "admin"},
+                        "node": {"type": "Identity"},
+                    }
+                ],
+            },
+            FULL_SCOPE,
+        )
         assert [m["nodes"][1]["name"] for m in who["matches"]] == ["Asha Rao"]
-        nobody = query.match(s, tenant, {
-            "start": {"id": estate["db"]},
-            "steps": [{"edge": "HAS_ACCESS", "direction": "in", "where": {"privilege": "read"}}],
-        }, FULL_SCOPE)
+        nobody = query.match(
+            s,
+            tenant,
+            {
+                "start": {"id": estate["db"]},
+                "steps": [{"edge": "HAS_ACCESS", "direction": "in", "where": {"privilege": "read"}}],
+            },
+            FULL_SCOPE,
+        )
         assert nobody["count"] == 0
         with pytest.raises(ValidationFailed):
             query.match(s, tenant, {"start": {"type": "Asset"}, "steps": [{"edge": "NOPE"}]}, FULL_SCOPE)
@@ -290,9 +357,13 @@ def test_type_restricted_scope_hides_other_types_everywhere(db, tenant, query, e
 
 def test_as_of_neighbourhood(db, tenant, query, estate, load):
     before = datetime.now(UTC)
-    load(nodes=[{"type": "Asset", "identifiers": {"fqdn": "web-01.dmz.example"}, "ref": "web"},
-                {"type": "Asset", "identifiers": {"fqdn": "new.core.example"}, "ref": "new"}],
-         edges=[{"type": "CONNECTS_TO", "source": {"ref": "web"}, "target": {"ref": "new"}}])
+    load(
+        nodes=[
+            {"type": "Asset", "identifiers": {"fqdn": "web-01.dmz.example"}, "ref": "web"},
+            {"type": "Asset", "identifiers": {"fqdn": "new.core.example"}, "ref": "new"},
+        ],
+        edges=[{"type": "CONNECTS_TO", "source": {"ref": "web"}, "target": {"ref": "new"}}],
+    )
     with db.transaction() as s:
         now = query.neighbors(s, tenant, estate["web"], FULL_SCOPE, edge_types=["CONNECTS_TO"])
         then = query.neighbors(s, tenant, estate["web"], FULL_SCOPE, edge_types=["CONNECTS_TO"], as_of=before)

@@ -91,7 +91,9 @@ def test_exact_enumeration_matches_reference_and_bounds_hold(seed):
 
 def test_bounds_coincide_on_a_tree():
     # attacker -> a -> b, attacker -> c : no shared steps, no reconvergence
-    src = np.array([0, 1, 0]); dst = np.array([1, 2, 3]); p = np.array([0.5, 0.4, 0.3])
+    src = np.array([0, 1, 0])
+    dst = np.array([1, 2, 3])
+    p = np.array([0.5, 0.4, 0.3])
     exact = exact_reach(4, src, dst, p)
     upper, _ = noisy_or_bound(4, src, dst, p)
     lower = best_path_probability(4, src, dst, p)
@@ -101,7 +103,9 @@ def test_bounds_coincide_on_a_tree():
 
 def test_shared_step_is_not_double_counted_by_the_estimate():
     # attacker -(0.5)-> a, then two certain routes a->t. True P(t) = 0.5.
-    src = np.array([0, 1, 1, 2]); dst = np.array([1, 2, 3, 3]); p = np.array([0.5, 1.0, 1.0, 1.0])
+    src = np.array([0, 1, 1, 2])
+    dst = np.array([1, 2, 3, 3])
+    p = np.array([0.5, 1.0, 1.0, 1.0])
     exact = exact_reach(4, src, dst, p)
     upper, _ = noisy_or_bound(4, src, dst, p)
     assert exact[3] == pytest.approx(0.5)
@@ -111,7 +115,9 @@ def test_shared_step_is_not_double_counted_by_the_estimate():
 
 def test_cycles_converge_and_stay_bounded():
     # a <-> b cycle fed by the attacker
-    src = np.array([0, 1, 2, 2]); dst = np.array([1, 2, 1, 3]); p = np.array([0.3, 0.9, 0.9, 0.5])
+    src = np.array([0, 1, 2, 2])
+    dst = np.array([1, 2, 1, 3])
+    p = np.array([0.3, 0.9, 0.9, 0.5])
     reference = brute_force(4, src, dst, p)
     upper, iterations = noisy_or_bound(4, src, dst, p)
     assert iterations < 1000
@@ -144,7 +150,9 @@ def test_monte_carlo_is_reproducible_and_within_error_of_exact(seed, monkeypatch
 def test_estimate_ignores_unreachable_parts_and_handles_empty_graphs():
     empty = estimate_reach(3, np.array([], dtype=np.int64), np.array([], dtype=np.int64), np.array([]))
     assert empty.probability.tolist() == [1.0, 0.0, 0.0]
-    src = np.array([1, 2]); dst = np.array([2, 1]); p = np.array([0.9, 0.9])  # island the attacker cannot reach
+    src = np.array([1, 2])
+    dst = np.array([2, 1])
+    p = np.array([0.9, 0.9])  # island the attacker cannot reach
     island = estimate_reach(3, src, dst, p)
     assert island.probability.tolist() == [1.0, 0.0, 0.0]
     zero = estimate_reach(2, np.array([0]), np.array([1]), np.array([0.0]))
@@ -257,7 +265,8 @@ def test_markov_iterative_solver_agrees_with_dense(monkeypatch):
     rng = random.Random(3)
     n = 30
     src, dst, p = random_graph(rng, n, 80, certain=0.1)
-    detection = np.full(n, 0.05); detection[0] = 0.0
+    detection = np.full(n, 0.05)
+    detection[0] = 0.0
     dense = absorbing_chain(n, src, dst, p, detection, 0, [n - 1, n - 2])
     monkeypatch.setattr(markov, "DENSE_LIMIT", 0)
     iterative = absorbing_chain(n, src, dst, p, detection, 0, [n - 1, n - 2])

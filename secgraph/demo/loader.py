@@ -54,7 +54,13 @@ def seed_demo(ctx: AppContext, tenant_id: str, principal: Principal) -> dict[str
     summary: dict[str, Any] = {"tenant": tenant_id, "sources": [], "memory_notes": 0}
     for file_name, mapping, params in SOURCES:
         result = ingest_source(
-            ctx.ingest, ctx.mappings, ctx.settings, tenant_id, principal.id, mapping, read_source(file_name),
+            ctx.ingest,
+            ctx.mappings,
+            ctx.settings,
+            tenant_id,
+            principal.id,
+            mapping,
+            read_source(file_name),
             params=params,
         )
         summary["sources"].append(

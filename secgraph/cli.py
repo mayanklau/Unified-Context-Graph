@@ -124,8 +124,10 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
 
     def _ontology() -> str:
         ontology = get_ontology(settings.ontology_file)
-        return f"{ontology.name} {ontology.version}: {len(ontology.node_types)} node types, " \
-               f"{len(ontology.edge_types)} edge types"
+        return (
+            f"{ontology.name} {ontology.version}: {len(ontology.node_types)} node types, "
+            f"{len(ontology.edge_types)} edge types"
+        )
 
     def _mappings() -> str:
         registry = MappingRegistry(get_ontology(settings.ontology_file), settings.mappings_dir)
@@ -166,7 +168,11 @@ def cmd_users(args: argparse.Namespace) -> int:
         roles = [r.strip() for r in args.roles.split(",") if r.strip()]
         _print(
             ctx.auth.create_user(
-                tenant, "system:cli", username=args.username, password=_read_password(args), roles=roles,
+                tenant,
+                "system:cli",
+                username=args.username,
+                password=_read_password(args),
+                roles=roles,
                 allow_platform_admin=True,
             )
         )
@@ -211,7 +217,14 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     if args.mapping:
         params = dict(item.split("=", 1) for item in args.param or [] if "=" in item)
         result = ingest_source(
-            ctx.ingest, ctx.mappings, ctx.settings, tenant, "system:cli", args.mapping, payload, params=params,
+            ctx.ingest,
+            ctx.mappings,
+            ctx.settings,
+            tenant,
+            "system:cli",
+            args.mapping,
+            payload,
+            params=params,
             source=args.source,
         )
     else:
@@ -260,8 +273,10 @@ def cmd_seed_demo(args: argparse.Namespace) -> int:
     )
     for target in overview["top_targets"]:
         p = target["probability"]
-        print(f"  {target['name']:<28} {target['type']:<10} p={p.get('estimate', p['upper']):.3f} "
-              f"[{p['lower']:.3f}, {p['upper']:.3f}]")
+        print(
+            f"  {target['name']:<28} {target['type']:<10} p={p.get('estimate', p['upper']):.3f} "
+            f"[{p['lower']:.3f}, {p['upper']:.3f}]"
+        )
     return 0
 
 
@@ -351,9 +366,13 @@ def cmd_mcp(args: argparse.Namespace) -> int:
                     continue
                 try:
                     response = client.post(
-                        endpoint, content=line.encode(),
-                        headers={"Content-Type": "application/json", "X-API-Key": api_key,
-                                 "Accept": "application/json"},
+                        endpoint,
+                        content=line.encode(),
+                        headers={
+                            "Content-Type": "application/json",
+                            "X-API-Key": api_key,
+                            "Accept": "application/json",
+                        },
                     )
                     if response.status_code == 202 or not response.content:
                         continue
@@ -361,9 +380,16 @@ def cmd_mcp(args: argparse.Namespace) -> int:
                 except httpx.HTTPError as exc:
                     message = json.loads(line) if line.lstrip().startswith("{") else {}
                     if "id" in message:
-                        sys.stdout.write(json.dumps({
-                            "jsonrpc": "2.0", "id": message["id"],
-                            "error": {"code": -32603, "message": f"cannot reach the graph: {exc}"}}) + "\n")
+                        sys.stdout.write(
+                            json.dumps(
+                                {
+                                    "jsonrpc": "2.0",
+                                    "id": message["id"],
+                                    "error": {"code": -32603, "message": f"cannot reach the graph: {exc}"},
+                                }
+                            )
+                            + "\n"
+                        )
                 sys.stdout.flush()
         return 0
     ctx = _context()
@@ -380,11 +406,11 @@ def cmd_mcp(args: argparse.Namespace) -> int:
         try:
             message = json.loads(line)
         except json.JSONDecodeError:
-            response: Any = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "invalid JSON"}}
+            reply: Any = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "invalid JSON"}}
         else:
-            response = ctx.mcp.handle(message, principal)
-        if response is not None:
-            sys.stdout.write(json.dumps(response, separators=(",", ":"), default=str) + "\n")
+            reply = ctx.mcp.handle(message, principal)
+        if reply is not None:
+            sys.stdout.write(json.dumps(reply, separators=(",", ":"), default=str) + "\n")
             sys.stdout.flush()
     return 0
 
@@ -487,8 +513,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command in ("users", "keys"):
-        needs = {"create": "username" if args.command == "users" else "name", "set-password": "username",
-                 "disable": "username", "enable": "username", "revoke": "key_id"}.get(args.action)
+        needs = {
+            "create": "username" if args.command == "users" else "name",
+            "set-password": "username",
+            "disable": "username",
+            "enable": "username",
+            "revoke": "key_id",
+        }.get(args.action)
         if needs and not getattr(args, needs, None):
             raise SystemExit(f"'{args.command} {args.action}' needs {needs.replace('_', '-')}")
     try:

@@ -468,7 +468,7 @@ class IngestService:
                     held.setdefault(kind, set()).add(value)
             return all(exclusive[kind] in values for kind, values in held.items())
 
-        identifiers = {kind: value for kind, value in p.idents}
+        identifiers = dict(p.idents)
         if strong:
             accepted = [n for n in strong if compatible(n)]
             rejected = [n for n in strong if n not in accepted]
@@ -629,8 +629,8 @@ class IngestService:
         if p.name:
             return _EXPLICIT_NAME_RANK, p.name[:512]
         by_kind: dict[str, str] = {}
-        for kind, value in p.idents:
-            by_kind.setdefault(kind, value)
+        for kind, identifier in p.idents:
+            by_kind.setdefault(kind, identifier)
         for rank, ref in enumerate(type_def.name_from):
             value = p.properties.get(ref)
             if value is None:
@@ -706,7 +706,7 @@ class IngestService:
                 name_norm=name.lower(),
                 name_rank=rank,
                 properties=properties,
-                prop_sources={k: source for k in properties},
+                prop_sources=dict.fromkeys(properties, source),
                 sources={source: observed_iso},
                 stub=p.stub,
                 confidence=p.confidence if p.confidence is not None else 1.0,
@@ -733,7 +733,8 @@ class IngestService:
         stale = previous_seen is not None and observed_iso < previous_seen
         resurrect = node.deleted_at is not None
         if p.stub and not resurrect:
-            merged, owners, changed_keys = dict(node.properties or {}), dict(node.prop_sources or {}), []
+            merged, owners = dict(node.properties or {}), dict(node.prop_sources or {})
+            changed_keys: list[str] = []
         else:
             merged, owners, changed_keys = self._merge_properties(
                 dict(node.properties or {}), dict(node.prop_sources or {}), p.properties, source, stale=stale
@@ -860,7 +861,9 @@ class IngestService:
         def resolve_endpoint(endpoint: PreparedEndpoint, create: bool) -> tuple[str, str] | str:
             if endpoint.ref is not None:
                 found = refs.get(endpoint.ref)
-                return found if found else f"unknown ref '{endpoint.ref}' (the node was rejected or is not in this batch)"
+                return (
+                    found if found else f"unknown ref '{endpoint.ref}' (the node was rejected or is not in this batch)"
+                )
             if endpoint.id is not None:
                 existing = state.nodes.get(endpoint.id)
                 if existing is None or existing.deleted_at is not None:
@@ -921,8 +924,8 @@ class IngestService:
                 .order_by(Edge.id)
                 .with_for_update(key_share=True)
             ).scalars()
-            for row in rows:
-                current[(row.type, row.src_id, row.dst_id, row.edge_key)] = row
+            for existing in rows:
+                current[(existing.type, existing.src_id, existing.dst_id, existing.edge_key)] = existing
 
         # 3. Apply. New rows are inserted only after every close has been flushed, so the
         #    "one current version per relationship" index can never see two current rows.

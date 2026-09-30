@@ -19,7 +19,7 @@ from secgraph.store.types import utcnow
 
 
 def get_ctx(request: Request) -> AppContext:
-    return request.app.state.ctx  # type: ignore[no-any-return]
+    return request.app.state.ctx
 
 
 Ctx = Annotated[AppContext, Depends(get_ctx)]
@@ -38,7 +38,10 @@ def get_principal(
             raise PermissionDenied("only a platform administrator may act on another tenant")
         tenant = validate_tenant_id(x_tenant_id.strip().lower())
         principal = Principal.build(
-            id=principal.id, name=principal.name, kind=principal.kind, tenant_id=tenant,
+            id=principal.id,
+            name=principal.name,
+            kind=principal.kind,
+            tenant_id=tenant,
             roles=list(principal.roles),
             node_types=list(principal.node_types) if principal.node_types is not None else None,
         )

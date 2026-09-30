@@ -42,11 +42,12 @@ OUTCOMES = ("used", "success", "failure")
 _TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9_.:/-]{1,63}")
 _TAG_RE = re.compile(r"^[a-z0-9][a-z0-9_.:/-]{0,47}$")
 _FEATURE_RE = re.compile(r"^[a-z0-9_]{1,24}:[^\s]{1,64}$")
-_STOPWORDS = frozenset(
+_STOPWORD_TEXT = (
     "a an and are as at be been but by can did do does for from had has have he her his how i if in into is it its "
     "may me my no not of on or our she should so than that the their them then there these they this to too very was "
-    "we were what when where which while who why will with would you your".split()
+    "we were what when where which while who why will with would you your"
 )
+_STOPWORDS = frozenset(_STOPWORD_TEXT.split())
 _MAX_TERMS = 400
 _MAX_LINKS = 50
 _EXTRA_FEATURE_PENALTY = 0.25  # how much a note's specifics that the situation lacks count against it
@@ -339,10 +340,7 @@ class MemoryService:
                 select(Node.id, Node.type).where(Node.tenant_id == tenant_id, Node.id.in_(chunk))
             ):
                 types[node_id] = node_type
-        return {
-            note_id for note_id in note_ids
-            if all(scope.allows(types.get(n, "")) for n in links.get(note_id, []))
-        }
+        return {note_id for note_id in note_ids if all(scope.allows(types.get(n, "")) for n in links.get(note_id, []))}
 
     @staticmethod
     def _view(note: MemoryNote, entity_ids: list[str]) -> dict[str, Any]:
@@ -386,17 +384,20 @@ class MemoryService:
         if not terms:
             return {}
         total = session.execute(
-            select(func.count()).select_from(MemoryNote).where(
-                MemoryNote.tenant_id == tenant_id, MemoryNote.status == "active"
-            )
+            select(func.count())
+            .select_from(MemoryNote)
+            .where(MemoryNote.tenant_id == tenant_id, MemoryNote.status == "active")
         ).scalar_one()
         if not total:
             return {}
-        average = session.execute(
-            select(func.avg(MemoryNote.token_count)).where(
-                MemoryNote.tenant_id == tenant_id, MemoryNote.status == "active"
-            )
-        ).scalar_one() or 1.0
+        average: float = float(
+            session.execute(
+                select(func.avg(MemoryNote.token_count)).where(
+                    MemoryNote.tenant_id == tenant_id, MemoryNote.status == "active"
+                )
+            ).scalar_one()
+            or 1.0
+        )
         average = max(float(average), 1.0)
         postings = session.execute(
             select(MemoryTerm.term, MemoryTerm.note_id, MemoryTerm.tf)
@@ -426,9 +427,9 @@ class MemoryService:
     def _feature_weights(self, session: Session, tenant_id: str, features: set[str]) -> dict[str, float]:
         """Inverse document frequency of each signature feature across active notes."""
         total = session.execute(
-            select(func.count()).select_from(MemoryNote).where(
-                MemoryNote.tenant_id == tenant_id, MemoryNote.status == "active"
-            )
+            select(func.count())
+            .select_from(MemoryNote)
+            .where(MemoryNote.tenant_id == tenant_id, MemoryNote.status == "active")
         ).scalar_one()
         frequency: dict[str, int] = {}
         ordered = sorted(features)

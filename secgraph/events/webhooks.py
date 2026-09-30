@@ -23,6 +23,7 @@ import socket
 import time
 import uuid
 from datetime import timedelta
+from functools import partial
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -42,7 +43,13 @@ from secgraph.store.types import utcnow
 log = get_logger(__name__)
 
 EVENT_KINDS = (
-    "node.created", "node.updated", "node.deleted", "node.merged", "edge.created", "edge.updated", "edge.deleted",
+    "node.created",
+    "node.updated",
+    "node.deleted",
+    "node.merged",
+    "edge.created",
+    "edge.updated",
+    "edge.deleted",
 )
 _BATCH = 200
 _ALWAYS_BLOCKED = [
@@ -166,7 +173,11 @@ class WebhookService:
             )
             session.add(hook)
             audit.record(
-                session, tenant_id, actor=actor, action="webhook.create", target=f"webhook:{hook_id}",
+                session,
+                tenant_id,
+                actor=actor,
+                action="webhook.create",
+                target=f"webhook:{hook_id}",
                 detail={"name": name, "url": url, "event_kinds": kinds, "entity_types": types},
             )
             session.flush()
@@ -208,7 +219,10 @@ class WebhookService:
                 hook.next_attempt_at = None
                 hook.last_error = None
             audit.record(
-                session, tenant_id, actor=actor, action="webhook.enable" if active else "webhook.disable",
+                session,
+                tenant_id,
+                actor=actor,
+                action="webhook.enable" if active else "webhook.disable",
                 target=f"webhook:{hook_id}",
             )
             return _view(hook)
@@ -233,7 +247,7 @@ class WebhookService:
             )
         for hook_id in due:
             try:
-                outcome = self.db.run(lambda s, h=hook_id: self._deliver_one(s, h), attempts=1)
+                outcome = self.db.run(partial(self._deliver_one, hook_id=hook_id), attempts=1)
             except Exception:
                 log.error("webhook delivery pass failed", webhook=hook_id, exc_info=True)
                 continue
@@ -251,9 +265,7 @@ class WebhookService:
         if not events:
             return {"delivered": 0, "failed": 0, "events": 0}
         kinds, types = set(hook.event_kinds or []), set(hook.entity_types or [])
-        wanted = [
-            e for e in events if (not kinds or e.kind in kinds) and (not types or e.entity_type in types)
-        ]
+        wanted = [e for e in events if (not kinds or e.kind in kinds) and (not types or e.entity_type in types)]
         last_seq = events[-1].seq
         if not wanted:
             hook.cursor = last_seq
@@ -306,8 +318,12 @@ class WebhookService:
         if hook.failures >= self.settings.webhook_max_attempts:
             hook.active = False
             audit.record(
-                session, hook.tenant_id, actor="system:worker", action="webhook.disabled",
-                target=f"webhook:{hook.id}", detail={"failures": hook.failures, "last_error": error},
+                session,
+                hook.tenant_id,
+                actor="system:worker",
+                action="webhook.disabled",
+                target=f"webhook:{hook.id}",
+                detail={"failures": hook.failures, "last_error": error},
             )
             log.error("webhook disabled after repeated failures", webhook=hook.id, error=error)
         else:

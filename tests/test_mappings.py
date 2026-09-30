@@ -53,8 +53,11 @@ def neighbours(db, tenant, node_id, edge_type, direction="out"):
 
 # ---- path language ----------------------------------------------------------
 def test_path_language():
-    doc = {"a": {"b": [{"c": 1, "k": "x"}, {"c": 2, "k": "y"}, {"k": "x", "c": 3}]}, "e": [[1, 2], [3]],
-           "w": [{"d": [{"v": "p"}, {"v": "q"}]}, {"d": [{"v": "r"}]}]}
+    doc = {
+        "a": {"b": [{"c": 1, "k": "x"}, {"c": 2, "k": "y"}, {"k": "x", "c": 3}]},
+        "e": [[1, 2], [3]],
+        "w": [{"d": [{"v": "p"}, {"v": "q"}]}, {"d": [{"v": "r"}]}],
+    }
     assert walk(doc, compile_path(".a.b[0].c")) == 1
     assert walk(doc, compile_path(".a.b[*].c")) == [1, 2, 3]
     assert walk(doc, compile_path(".a.b[?k=x].c")) == [1, 3]
@@ -67,30 +70,73 @@ def test_path_language():
 
 
 def test_registry_lists_and_rejects_unknown(registry):
-    assert set(registry.names()) >= {"assets_csv", "cyclonedx", "nvd_cve", "cisa_kev", "epss_csv", "attack_stix",
-                                     "vuln_findings_csv", "identities_csv", "ocsf_vulnerability_finding",
-                                     "ocsf_detection_finding"}
+    assert set(registry.names()) >= {
+        "assets_csv",
+        "cyclonedx",
+        "nvd_cve",
+        "cisa_kev",
+        "epss_csv",
+        "attack_stix",
+        "vuln_findings_csv",
+        "identities_csv",
+        "ocsf_vulnerability_finding",
+        "ocsf_detection_finding",
+    }
     assert all(d["description"] for d in registry.describe())
     with pytest.raises(NotFound):
         registry.get("nope")
 
 
-@pytest.mark.parametrize("bad, message", [
-    ({"mapping": {"name": "x1", "source": "s"}, "emit": [{"node": {"type": "Nope", "identifiers": {"a": "$.a"}}}]},
-     "unknown node type"),
-    ({"mapping": {"name": "x1", "source": "s"}, "emit": [{"node": {"type": "Asset", "identifiers": {"nope": "$.a"}}}]},
-     "no identifier 'nope'"),
-    ({"mapping": {"name": "x1", "source": "s"},
-      "emit": [{"edge": {"type": "RUNS", "source": {"ref": "ghost"}, "target": {"ref": "ghost"}}}]}, "not defined"),
-    ({"mapping": {"name": "x1", "source": "s"},
-      "emit": [{"edge": {"type": "RUNS", "source": {"type": "Finding", "identifiers": {"finding_key": "$.a"}},
-                         "target": {"type": "Software", "identifiers": {"purl": "$.p"}}}}]}, "does not allow Finding"),
-    ({"mapping": {"name": "x1", "source": "s"},
-      "emit": [{"node": {"type": "Asset", "identifiers": {"fqdn": {"path": "$.a", "transform": "rot13"}}}}]},
-     "unknown transform"),
-    ({"mapping": {"name": "x1", "source": "s", "surprise": 1}, "emit": []}, "invalid mapping"),
-    ({"mapping": {"name": "Bad Name", "source": "s"}, "emit": []}, "snake_case"),
-])
+@pytest.mark.parametrize(
+    "bad, message",
+    [
+        (
+            {
+                "mapping": {"name": "x1", "source": "s"},
+                "emit": [{"node": {"type": "Nope", "identifiers": {"a": "$.a"}}}],
+            },
+            "unknown node type",
+        ),
+        (
+            {
+                "mapping": {"name": "x1", "source": "s"},
+                "emit": [{"node": {"type": "Asset", "identifiers": {"nope": "$.a"}}}],
+            },
+            "no identifier 'nope'",
+        ),
+        (
+            {
+                "mapping": {"name": "x1", "source": "s"},
+                "emit": [{"edge": {"type": "RUNS", "source": {"ref": "ghost"}, "target": {"ref": "ghost"}}}],
+            },
+            "not defined",
+        ),
+        (
+            {
+                "mapping": {"name": "x1", "source": "s"},
+                "emit": [
+                    {
+                        "edge": {
+                            "type": "RUNS",
+                            "source": {"type": "Finding", "identifiers": {"finding_key": "$.a"}},
+                            "target": {"type": "Software", "identifiers": {"purl": "$.p"}},
+                        }
+                    }
+                ],
+            },
+            "does not allow Finding",
+        ),
+        (
+            {
+                "mapping": {"name": "x1", "source": "s"},
+                "emit": [{"node": {"type": "Asset", "identifiers": {"fqdn": {"path": "$.a", "transform": "rot13"}}}}],
+            },
+            "unknown transform",
+        ),
+        ({"mapping": {"name": "x1", "source": "s", "surprise": 1}, "emit": []}, "invalid mapping"),
+        ({"mapping": {"name": "Bad Name", "source": "s"}, "emit": []}, "snake_case"),
+    ],
+)
 def test_mappings_are_validated_against_the_ontology_at_load(ontology, bad, message):
     with pytest.raises(ConfigurationError) as excinfo:
         Mapping(bad, ontology, "test.yaml")
@@ -104,10 +150,18 @@ def test_assets_csv(db, tenant, run, find):
     assert out["nodes"]["created"] == 16 + 4 + 5  # assets, segments, business services
     web = find("web-portal-01.dmz.meridian.example", "Asset", "fqdn")
     assert web["name"] == "web-portal-01"
-    assert web["properties"] == {"asset_type": "server", "os": "Ubuntu", "os_version": "22.04",
-                                 "environment": "production", "criticality": 4, "crown_jewel": False,
-                                 "internet_exposed": True, "owner": "Digital Channels", "location": "BLR-DC1",
-                                 "status": "active"}
+    assert web["properties"] == {
+        "asset_type": "server",
+        "os": "Ubuntu",
+        "os_version": "22.04",
+        "environment": "production",
+        "criticality": 4,
+        "crown_jewel": False,
+        "internet_exposed": True,
+        "owner": "Digital Channels",
+        "location": "BLR-DC1",
+        "status": "active",
+    }
     assert web["identifiers"]["ip"] == ["10.10.1.10", "203.0.113.10"]
     assert web["identifiers"]["serial"] == ["VMW-7F3A1001"] and web["identifiers"]["asset_id"] == ["ci-1001"]
     assert neighbours(db, tenant, web["id"], "IN_SEGMENT") == ["dmz"]
@@ -189,23 +243,35 @@ def test_scanner_findings_csv(db, tenant, run, find):
 def test_cyclonedx_sbom(db, tenant, run, find):
     with pytest.raises(ValidationFailed):
         run("cyclonedx", read_source("web-portal-01.cdx.json"), params={"nope": "x"})
-    out = run("cyclonedx", read_source("web-portal-01.cdx.json"),
-              params={"asset_fqdn": "web-portal-01.dmz.meridian.example"})
+    out = run(
+        "cyclonedx", read_source("web-portal-01.cdx.json"), params={"asset_fqdn": "web-portal-01.dmz.meridian.example"}
+    )
     assert out["source_records"] == 6 and out["nodes"]["created"] == 5 and out["quarantined_total"] == 0
     asset = find("web-portal-01.dmz.meridian.example", "Asset", "fqdn")
     assert neighbours(db, tenant, asset["id"], "RUNS") == [
-        "commons-text", "jackson-databind", "log4j-core", "nginx", "spring-webmvc"]
+        "commons-text",
+        "jackson-databind",
+        "log4j-core",
+        "nginx",
+        "spring-webmvc",
+    ]
     log4j = find("pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1", "Software", "purl")
-    assert log4j["properties"] == {"name": "log4j-core", "version": "2.14.1", "vendor": "org.apache.logging.log4j",
-                                   "ecosystem": "library", "license": "Apache-2.0"}
+    assert log4j["properties"] == {
+        "name": "log4j-core",
+        "version": "2.14.1",
+        "vendor": "org.apache.logging.log4j",
+        "ecosystem": "library",
+        "license": "Apache-2.0",
+    }
     nginx = find("cpe:2.3:a:f5:nginx:1.18.0:*:*:*:*:*:*:*", "Software", "cpe")
     assert nginx["properties"]["version"] == "1.18.0"
 
 
 def test_sbom_attaches_to_the_inventory_asset_without_creating_a_duplicate(db, tenant, run, find):
     run("assets_csv", read_source("assets.csv"))
-    by_parameter = run("cyclonedx", read_source("web-portal-01.cdx.json"),
-                       params={"asset_fqdn": "web-portal-01.dmz.meridian.example"})
+    by_parameter = run(
+        "cyclonedx", read_source("web-portal-01.cdx.json"), params={"asset_fqdn": "web-portal-01.dmz.meridian.example"}
+    )
     assert by_parameter["conflicts"] == 0 and by_parameter["stubs_created"] == 0
     # with no parameter the SBOM's component name is used as a host name and still lands on the same asset
     by_name = run("cyclonedx", read_source("web-portal-01.cdx.json"))
@@ -229,8 +295,11 @@ def test_attack_stix_bundle(db, tenant, run, find):
     actor = find("apt41", "ThreatActor", "actor_key")
     assert actor["properties"]["aliases"] == ["APT41", "Wicked Panda", "Brass Typhoon"]
     assert neighbours(db, tenant, actor["id"], "USES") == [
-        "Command and Scripting Interpreter", "Exploit Public-Facing Application", "Exploitation of Remote Services",
-        "Valid Accounts"]
+        "Command and Scripting Interpreter",
+        "Exploit Public-Facing Application",
+        "Exploitation of Remote Services",
+        "Valid Accounts",
+    ]
     assert out["edges"]["created"] == 6  # malware→technique and subtechnique-of relationships are not 'uses by a group'
     assert out["stubs_created"] == 0
     with db.transaction() as s:
@@ -252,8 +321,12 @@ def test_ocsf_vulnerability_findings_merge_with_inventory_by_hostname(db, tenant
     in_progress = find("edr-sensor:vf-7002:CVE-2021-34527", "Finding", "finding_key")
     assert in_progress["properties"]["status"] == "in_progress"
     cve = find("CVE-2019-0708", "Vulnerability", "cve")
-    assert cve["properties"] == {"cvss_score": 9.8, "epss": 0.94453, "kev": True,
-                                 "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
+    assert cve["properties"] == {
+        "cvss_score": 9.8,
+        "epss": 0.94453,
+        "kev": True,
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    }
     shared = find("CVE-2021-34527", "Vulnerability", "cve")
     assert len(neighbours(db, tenant, shared["id"], "INSTANCE_OF", "in")) == 2
 

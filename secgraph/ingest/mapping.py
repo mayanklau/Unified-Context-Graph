@@ -47,8 +47,21 @@ from secgraph.ontology.model import Ontology
 
 _SEGMENT_RE = re.compile(r"\.([A-Za-z_][\w-]*)|\[(\d+)\]|\[(\*)\]|\[\?([\w.-]+)=([^\]]*)\]")
 _TRANSFORMS = {
-    "lower", "upper", "strip", "bool", "int", "float", "first", "last", "unique", "string", "basename",
-    "split_comma", "split_semicolon", "split_space", "percent_to_fraction",
+    "lower",
+    "upper",
+    "strip",
+    "bool",
+    "int",
+    "float",
+    "first",
+    "last",
+    "unique",
+    "string",
+    "basename",
+    "split_comma",
+    "split_semicolon",
+    "split_space",
+    "percent_to_fraction",
 }
 _NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,47}$")
 _MISSING = object()
@@ -108,10 +121,7 @@ def walk(value: Any, segments: list[tuple[str, Any]]) -> Any:
             if not isinstance(current, list):
                 return None
             key, expected = argument
-            current = [
-                item for item in current
-                if isinstance(item, dict) and str(_dig(item, key)) == expected
-            ]
+            current = [item for item in current if isinstance(item, dict) and str(_dig(item, key)) == expected]
             fanned = True
     return current
 
@@ -273,7 +283,7 @@ class Expression:
                     value = candidate
                     break
         else:  # concat
-            pieces = []
+            pieces: list[str] = []
             for part in self.parts:
                 piece = part.evaluate(scope)
                 if _empty(piece):
@@ -297,9 +307,11 @@ class Condition:
         self.where = where
         self.operator = "truthy"
         self.items: list[Any] = []
-        if isinstance(spec, dict) and len(spec) == 1 and next(iter(spec)) in {
-            "eq", "ne", "in", "startswith", "exists", "not", "all", "any"
-        }:
+        if (
+            isinstance(spec, dict)
+            and len(spec) == 1
+            and next(iter(spec)) in {"eq", "ne", "in", "startswith", "exists", "not", "all", "any"}
+        ):
             self.operator, argument = next(iter(spec.items()))
             if self.operator in ("all", "any"):
                 if not isinstance(argument, list) or not argument:
@@ -498,9 +510,7 @@ class Mapping:
         else:
             assert spec.emit is not None
             inner = set(refs)
-            compiled.children = [
-                self._compile(child, f"{where}.emit[{i}]", inner) for i, child in enumerate(spec.emit)
-            ]
+            compiled.children = [self._compile(child, f"{where}.emit[{i}]", inner) for i, child in enumerate(spec.emit)]
         return compiled
 
     def _compile_node(self, spec: NodeSpec, where: str) -> _CompiledNode:
@@ -549,8 +559,10 @@ class Mapping:
         edge_type = self.ontology.edge_type(spec.type)
         if edge_type is None:
             raise ConfigurationError(f"{where}: unknown edge type '{spec.type}'")
-        for side, endpoint, allowed in (("source", spec.source, edge_type.source), ("target", spec.target,
-                                                                                    edge_type.target)):
+        for side, endpoint, allowed in (
+            ("source", spec.source, edge_type.source),
+            ("target", spec.target, edge_type.target),
+        ):
             if endpoint.type is not None and endpoint.type not in allowed:
                 raise ConfigurationError(
                     f"{where}.{side}: {spec.type} does not allow {endpoint.type} here (allowed: {', '.join(allowed)})"
@@ -585,8 +597,9 @@ class Mapping:
             reader = csv.DictReader(io.StringIO("\n".join(lines)))
             if not reader.fieldnames:
                 raise ValidationFailed("CSV payload has no header row")
-            rows = [{(k or "").strip(): (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
-                    for row in reader]
+            rows = [
+                {(k or "").strip(): (v.strip() if isinstance(v, str) else v) for k, v in row.items()} for row in reader
+            ]
             return rows, rows
         if fmt == "jsonl":
             if not isinstance(payload, str):
@@ -680,8 +693,11 @@ class Mapping:
             if node.spec.ref:
                 record["ref"] = f"{prefix}:{node.spec.ref}"
                 refs[node.spec.ref] = record["ref"]
-            for key, expression in (("name", node.name), ("observed_at", node.observed_at),
-                                    ("confidence", node.confidence)):
+            for key, expression in (
+                ("name", node.name),
+                ("observed_at", node.observed_at),
+                ("confidence", node.confidence),
+            ):
                 if expression is not None:
                     value = expression.evaluate(scope)
                     if not _empty(value):
@@ -746,8 +762,14 @@ class Mapping:
             record_nodes: list[dict[str, Any]] = []
             record_edges: list[dict[str, Any]] = []
             try:
-                self._run(self._emit, Scope(record=record, root=root, params=params), f"r{index}", {},
-                          record_nodes, record_edges)
+                self._run(
+                    self._emit,
+                    Scope(record=record, root=root, params=params),
+                    f"r{index}",
+                    {},
+                    record_nodes,
+                    record_edges,
+                )
             except Exception as exc:  # a malformed record must not stop the file
                 errors.append((index, record, f"mapping '{self.name}' failed on this record: {exc}"))
                 continue

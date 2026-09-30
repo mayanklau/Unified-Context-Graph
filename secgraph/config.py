@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     default_tenant: str = "default"
 
     # --- auth
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = "change-me-in-production"  # noqa: S105 - refused outside development
     jwt_issuer: str = "secgraph"
     jwt_ttl_seconds: int = 3600
     # Externally issued tokens (on-prem IdP such as Keycloak / ADFS): PEM public key, RS256/ES256.

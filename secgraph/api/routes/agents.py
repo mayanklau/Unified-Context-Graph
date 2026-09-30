@@ -32,7 +32,11 @@ def context(
     include_analytics: bool = True,
 ) -> dict[str, Any]:
     return ctx.context.build(
-        principal.tenant_id, principal, node_id, budget_tokens=budget_tokens, include_analytics=include_analytics,
+        principal.tenant_id,
+        principal,
+        node_id,
+        budget_tokens=budget_tokens,
+        include_analytics=include_analytics,
         as_of=as_of,
     )
 
@@ -40,8 +44,16 @@ def context(
 @router.post("/api/v1/memory", summary="Write a note to shared memory", status_code=201)
 def remember(body: NoteBody, ctx: Ctx, principal: MemoryWriter) -> dict[str, Any]:
     return ctx.memory.remember(
-        principal.tenant_id, principal, kind=body.kind, title=body.title, body=body.body, entity_ids=body.entity_ids,
-        tags=body.tags, signature=body.signature, confidence=body.confidence, supersedes=body.supersedes,
+        principal.tenant_id,
+        principal,
+        kind=body.kind,
+        title=body.title,
+        body=body.body,
+        entity_ids=body.entity_ids,
+        tags=body.tags,
+        signature=body.signature,
+        confidence=body.confidence,
+        supersedes=body.supersedes,
         ttl_days=body.ttl_days,
     )
 
@@ -58,8 +70,14 @@ def search_memory(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> dict[str, Any]:
     notes = ctx.memory.search(
-        principal.tenant_id, principal.scope, query=q, entity_id=entity_id, kind=kind, tags=csv_param(tags),
-        include_archived=include_archived, limit=limit,
+        principal.tenant_id,
+        principal.scope,
+        query=q,
+        entity_id=entity_id,
+        kind=kind,
+        tags=csv_param(tags),
+        include_archived=include_archived,
+        limit=limit,
     )
     return {"items": notes, "total": len(notes)}
 
@@ -68,8 +86,13 @@ def search_memory(
 def suggest(body: SuggestBody, ctx: Ctx, principal: MemoryReader) -> dict[str, Any]:
     kinds = tuple(body.kinds) if body.kinds else ("lesson", "playbook", "decision")
     notes = ctx.memory.suggest(
-        principal.tenant_id, principal.scope, entity_ids=body.entity_ids, signature=body.signature, text=body.text,
-        kinds=kinds, limit=body.limit,
+        principal.tenant_id,
+        principal.scope,
+        entity_ids=body.entity_ids,
+        signature=body.signature,
+        text=body.text,
+        kinds=kinds,
+        limit=body.limit,
     )
     return {"items": notes, "total": len(notes)}
 
@@ -110,8 +133,11 @@ async def mcp(request: Request, ctx: Ctx, principal: Caller) -> Response:
     version = request.headers.get("mcp-protocol-version")
     if version and version not in PROTOCOL_VERSIONS:
         return JSONResponse(
-            {"jsonrpc": "2.0", "id": None,
-             "error": {"code": INVALID_REQUEST, "message": f"unsupported MCP-Protocol-Version: {version}"}},
+            {
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {"code": INVALID_REQUEST, "message": f"unsupported MCP-Protocol-Version: {version}"},
+            },
             status_code=400,
         )
     raw = await request.body()

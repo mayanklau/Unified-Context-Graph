@@ -112,7 +112,9 @@ def test_vulnerability_connector_without_analytics_permission(bridge, auth, demo
     sdk = SecurityGraphClient("http://testserver", api_key=key, transport=bridge)
     found = GraphVulnerabilityConnector(sdk).get_vulnerabilities("web-portal-01")
     assert found["count"] == 2 and {v["vulnerability"] for v in found["vulnerabilities"]} == {
-        "CVE-2021-44228", "CVE-2022-42889"}
+        "CVE-2021-44228",
+        "CVE-2022-42889",
+    }
     assert "exposure" not in GraphAssetConnector(sdk).get_asset("web-portal-01")
 
 
@@ -166,8 +168,9 @@ def test_cli_end_to_end(cli, tmp_path, settings):
     code, out, _ = cli("report", "priorities", "--by", "asset", "--limit", "2")
     assert len(json.loads(out)["items"]) == 2
 
-    code, out, err = cli("users", "create", "asha", "--roles", "analyst,steward", "--password-stdin",
-                         stdin="Correct-Horse-9\n")
+    code, out, err = cli(
+        "users", "create", "asha", "--roles", "analyst,steward", "--password-stdin", stdin="Correct-Horse-9\n"
+    )
     assert code == 0 and json.loads(out)["roles"] == ["analyst", "steward"]
     code, _, err = cli("users", "create", "weak", "--password-stdin", stdin="short\n")
     assert code == 1 and "at least 12" in err
@@ -188,8 +191,10 @@ def test_cli_end_to_end(cli, tmp_path, settings):
     code, out, _ = cli("ingest", str(source), "--mapping", "assets_csv", "--tenant", "other")
     assert code == 2 and json.loads(out)["nodes"]["created"] == 1  # exit code 2: something was quarantined
     batch = tmp_path / "batch.json"
-    batch.write_text(json.dumps({"source": "cli", "nodes": [
-        {"type": "Asset", "identifiers": {"fqdn": "cli-2.corp.example"}}]}), encoding="utf-8")
+    batch.write_text(
+        json.dumps({"source": "cli", "nodes": [{"type": "Asset", "identifiers": {"fqdn": "cli-2.corp.example"}}]}),
+        encoding="utf-8",
+    )
     code, out, _ = cli("ingest", str(batch), "--tenant", "other")
     assert code == 0 and json.loads(out)["nodes"]["created"] == 1
     assert cli("ingest", str(source), "--mapping", "nope")[0] == 1
@@ -223,12 +228,18 @@ def test_cli_end_to_end(cli, tmp_path, settings):
 def test_cli_mcp_over_stdio(cli):
     cli("migrate")
     cli("seed-demo")
-    requests = "\n".join(json.dumps(m) for m in [
-        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}},
-        {"jsonrpc": "2.0", "method": "notifications/initialized"},
-        {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
-        {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "graph_stats", "arguments": {}}},
-    ]) + "\nnot json\n"
+    requests = (
+        "\n".join(
+            json.dumps(m)
+            for m in [
+                {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}},
+                {"jsonrpc": "2.0", "method": "notifications/initialized"},
+                {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+                {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "graph_stats", "arguments": {}}},
+            ]
+        )
+        + "\nnot json\n"
+    )
     code, out, _ = cli("mcp", stdin=requests)
     assert code == 0
     responses = [json.loads(line) for line in out.strip().splitlines()]

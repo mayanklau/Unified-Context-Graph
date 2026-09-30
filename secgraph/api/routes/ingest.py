@@ -44,15 +44,21 @@ async def ingest_mapped(
     principal: Writer,
     source: Annotated[str | None, Query(description="Override the mapping's default source name")] = None,
 ) -> dict[str, Any]:
-    params = {
-        key[len("param."):]: value for key, value in request.query_params.items() if key.startswith("param.")
-    }
+    params = {key[len("param.") :]: value for key, value in request.query_params.items() if key.startswith("param.")}
     payload = await request.body()
     if not payload:
         raise ValidationFailed("the request body is empty; send the source file as the body")
     return await run_in_threadpool(
-        ingest_source, ctx.ingest, ctx.mappings, ctx.settings, principal.tenant_id, principal.id, mapping, payload,
-        params=params, source=source,
+        ingest_source,
+        ctx.ingest,
+        ctx.mappings,
+        ctx.settings,
+        principal.tenant_id,
+        principal.id,
+        mapping,
+        payload,
+        params=params,
+        source=source,
     )
 
 

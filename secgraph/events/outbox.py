@@ -80,9 +80,7 @@ def head_sequence(session: Session, tenant_id: str) -> int:
 
 
 def prune_changes(session: Session, tenant_id: str, older_than: datetime) -> int:
-    result = session.execute(
-        delete(ChangeEvent).where(ChangeEvent.tenant_id == tenant_id, ChangeEvent.ts < older_than)
-    )
+    result = session.execute(delete(ChangeEvent).where(ChangeEvent.tenant_id == tenant_id, ChangeEvent.ts < older_than))
     return int(getattr(result, "rowcount", 0) or 0)
 
 

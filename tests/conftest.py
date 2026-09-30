@@ -138,11 +138,10 @@ class Bridge(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         path = request.url.raw_path.decode()
-        response = self.test_client.request(
-            request.method, path, headers=dict(request.headers), content=request.read()
-        )
+        response = self.test_client.request(request.method, path, headers=dict(request.headers), content=request.read())
         headers = {
-            k: v for k, v in response.headers.items()
+            k: v
+            for k, v in response.headers.items()
             if k.lower() not in ("content-length", "content-encoding", "transfer-encoding")
         }
         return httpx.Response(response.status_code, headers=headers, content=response.content)
@@ -165,8 +164,13 @@ class Credentials:
         key = (roles, tuple(node_types or ()), kind)
         if key not in self._cache:
             created = self.ctx.auth.create_api_key(
-                self.tenant, "user:test", name=f"test {' '.join(roles)}", roles=list(roles), kind=kind,
-                node_types=node_types, known_node_types=set(self.ctx.ontology.node_types),
+                self.tenant,
+                "user:test",
+                name=f"test {' '.join(roles)}",
+                roles=list(roles),
+                kind=kind,
+                node_types=node_types,
+                known_node_types=set(self.ctx.ontology.node_types),
             )
             self._cache[key] = {"X-API-Key": created["api_key"]}
         return self._cache[key]

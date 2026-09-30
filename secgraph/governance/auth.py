@@ -139,9 +139,7 @@ class AuthService:
         username = username.strip().lower()
 
         def _work(session: Session) -> tuple[Principal | None, str]:
-            user = session.execute(
-                select(User).where(User.username == username).with_for_update()
-            ).scalar_one_or_none()
+            user = session.execute(select(User).where(User.username == username).with_for_update()).scalar_one_or_none()
             now = utcnow()
             if user is None:
                 verify_password(password, _DUMMY_HASH)
@@ -154,7 +152,10 @@ class AuthService:
                     user.locked_until = now + timedelta(seconds=self.settings.login_lockout_seconds)
                     user.failed_attempts = 0
                     audit.record(
-                        session, user.tenant_id, actor=f"user:{username}", action="auth.lockout",
+                        session,
+                        user.tenant_id,
+                        actor=f"user:{username}",
+                        action="auth.lockout",
                         target=f"user:{username}",
                     )
                 return None, "invalid"
@@ -164,7 +165,10 @@ class AuthService:
             audit.record(session, user.tenant_id, actor=f"user:{username}", action="auth.login")
             return (
                 Principal.build(
-                    id=f"user:{user.username}", name=user.username, kind="user", tenant_id=user.tenant_id,
+                    id=f"user:{user.username}",
+                    name=user.username,
+                    kind="user",
+                    tenant_id=user.tenant_id,
                     roles=list(user.roles or []),
                 ),
                 "ok",
@@ -237,7 +241,10 @@ class AuthService:
             if user is None or user.disabled:
                 raise AuthenticationError("account is disabled or no longer exists")
             return Principal.build(
-                id=f"user:{user.username}", name=user.username, kind="user", tenant_id=user.tenant_id,
+                id=f"user:{user.username}",
+                name=user.username,
+                kind="user",
+                tenant_id=user.tenant_id,
                 roles=list(user.roles or []),
             )
 
@@ -361,7 +368,11 @@ class AuthService:
                 )
             )
             audit.record(
-                session, tenant_id, actor=created_by, action="apikey.create", target=f"key:{key_id}",
+                session,
+                tenant_id,
+                actor=created_by,
+                action="apikey.create",
+                target=f"key:{key_id}",
                 detail={"name": name, "roles": roles, "kind": kind, "node_types": node_types},
             )
 
@@ -415,7 +426,13 @@ class AuthService:
     # Users
     # ------------------------------------------------------------------ #
     def create_user(
-        self, tenant_id: str, actor: str, *, username: str, password: str, roles: list[str],
+        self,
+        tenant_id: str,
+        actor: str,
+        *,
+        username: str,
+        password: str,
+        roles: list[str],
         allow_platform_admin: bool = False,
     ) -> dict[str, Any]:
         username = username.strip().lower()
@@ -436,7 +453,11 @@ class AuthService:
                 User(id=user_id, tenant_id=tenant_id, username=username, password_hash=password_hash, roles=roles)
             )
             audit.record(
-                session, tenant_id, actor=actor, action="user.create", target=f"user:{username}",
+                session,
+                tenant_id,
+                actor=actor,
+                action="user.create",
+                target=f"user:{username}",
                 detail={"roles": roles},
             )
 
@@ -481,7 +502,7 @@ class AuthService:
                 user.password_hash = password_hash
                 user.failed_attempts = 0
                 user.locked_until = None
-                changed["password"] = "changed"
+                changed["password"] = "changed"  # noqa: S105 - an audit label, not a secret
             if changed:
                 audit.record(
                     session, tenant_id, actor=actor, action="user.update", target=f"user:{username}", detail=changed

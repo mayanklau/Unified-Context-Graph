@@ -49,8 +49,15 @@ def search_nodes(
         raise ValidationFailed("'where' must be a JSON object")
     with ctx.db.snapshot() as session:
         return ctx.query.search(
-            session, principal.tenant_id, principal.scope, types=csv_param(type), text=q, where=predicate,
-            include_stubs=include_stubs, limit=limit, offset=offset,
+            session,
+            principal.tenant_id,
+            principal.scope,
+            types=csv_param(type),
+            text=q,
+            where=predicate,
+            include_stubs=include_stubs,
+            limit=limit,
+            offset=offset,
         )
 
 
@@ -94,8 +101,15 @@ def neighbors(
 ) -> dict[str, Any]:
     with ctx.db.snapshot() as session:
         return ctx.query.neighbors(
-            session, principal.tenant_id, node_id, principal.scope, direction=direction,
-            edge_types=csv_param(edge_type), node_types=csv_param(node_type), limit=limit, as_of=as_of,
+            session,
+            principal.tenant_id,
+            node_id,
+            principal.scope,
+            direction=direction,
+            edge_types=csv_param(edge_type),
+            node_types=csv_param(node_type),
+            limit=limit,
+            as_of=as_of,
         )
 
 
@@ -123,8 +137,15 @@ def get_edge(edge_id: str, ctx: Ctx, principal: Reader) -> dict[str, Any]:
 def subgraph(body: SubgraphBody, ctx: Ctx, principal: Reader) -> dict[str, Any]:
     with ctx.db.snapshot() as session:
         return ctx.query.subgraph(
-            session, principal.tenant_id, body.seeds, principal.scope, depth=body.depth, direction=body.direction,
-            edge_types=body.edge_types, max_nodes=body.max_nodes, as_of=as_of_param(body.as_of),
+            session,
+            principal.tenant_id,
+            body.seeds,
+            principal.scope,
+            depth=body.depth,
+            direction=body.direction,
+            edge_types=body.edge_types,
+            max_nodes=body.max_nodes,
+            as_of=as_of_param(body.as_of),
         )
 
 
@@ -132,8 +153,15 @@ def subgraph(body: SubgraphBody, ctx: Ctx, principal: Reader) -> dict[str, Any]:
 def shortest_path(body: PathBody, ctx: Ctx, principal: Reader) -> dict[str, Any]:
     with ctx.db.snapshot() as session:
         return ctx.query.shortest_path(
-            session, principal.tenant_id, body.source_id, body.target_id, principal.scope, max_depth=body.max_depth,
-            edge_types=body.edge_types, directed=body.directed, as_of=as_of_param(body.as_of),
+            session,
+            principal.tenant_id,
+            body.source_id,
+            body.target_id,
+            principal.scope,
+            max_depth=body.max_depth,
+            edge_types=body.edge_types,
+            directed=body.directed,
+            as_of=as_of_param(body.as_of),
         )
 
 

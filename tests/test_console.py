@@ -68,7 +68,9 @@ def console(ctx) -> Iterator[dict[str, str]]:
     tenant = "ui-" + uuid.uuid4().hex[:10]
     suffix = uuid.uuid4().hex[:6]
     users = {"admin": f"ui-admin-{suffix}", "viewer": f"ui-viewer-{suffix}"}
-    seed_demo(ctx, tenant, Principal.build(id="user:ui-test", name="ui-test", kind="user", tenant_id=tenant, roles=["admin"]))
+    seed_demo(
+        ctx, tenant, Principal.build(id="user:ui-test", name="ui-test", kind="user", tenant_id=tenant, roles=["admin"])
+    )
     for role, username in users.items():
         ctx.auth.create_user(tenant, "user:ui-test", username=username, password=PASSWORD, roles=[role])
 
@@ -99,8 +101,11 @@ class Session:
         self.page.on("pageerror", lambda error: self.problems.append(f"script error: {error}"))
         self.page.on(
             "console",
-            lambda message: self.problems.append(f"console {message.type}: {message.text}")
-            if message.type in ("error", "warning") else None,
+            lambda message: (
+                self.problems.append(f"console {message.type}: {message.text}")
+                if message.type in ("error", "warning")
+                else None
+            ),
         )
 
     def login(self, username: str) -> None:
@@ -163,8 +168,8 @@ def test_explore_entity_tabs_and_graph(browser, console):
     session.login(console["admin"])
     session.open("explore")
     page = session.page
-    page.fill('input[type=search]', "web-portal-01")
-    page.click('#main form button[type=submit]')
+    page.fill("input[type=search]", "web-portal-01")
+    page.click("#main form button[type=submit]")
     page.click('tr.clickable:has-text("web-portal-01")')
     page.wait_for_selector(".graph svg .vertex")
     assert page.locator(".graph svg .vertex").count() >= 3
@@ -180,9 +185,7 @@ def test_explore_entity_tabs_and_graph(browser, console):
         ("Context pack", "web-portal-01"),
     ):
         page.click(f'.tabs button:has-text("{tab}")')
-        page.wait_for_function(
-            "expected => document.querySelector('#main').innerText.includes(expected)", arg=expected
-        )
+        page.wait_for_function("expected => document.querySelector('#main').innerText.includes(expected)", arg=expected)
         session.assert_clean()
     session.close()
 
@@ -205,15 +208,22 @@ def test_untrusted_names_are_rendered_as_text(browser, console, ctx):
     from secgraph.ingest.canonical import IngestRequest
 
     hostile = '<img src=x onerror="window.pwned=1">'
-    ctx.ingest.ingest(console["tenant"], "user:ui-test", IngestRequest(source="scanner", nodes=[
-        {"type": "Asset", "identifiers": {"hostname": "xss-probe-01"}, "properties": {"name": hostile}},
-    ]))
+    ctx.ingest.ingest(
+        console["tenant"],
+        "user:ui-test",
+        IngestRequest(
+            source="scanner",
+            nodes=[
+                {"type": "Asset", "identifiers": {"hostname": "xss-probe-01"}, "properties": {"name": hostile}},
+            ],
+        ),
+    )
     session = Session(browser, console["url"], viewport={"width": 1360, "height": 860})
     session.login(console["admin"])
     session.open("explore")
     page = session.page
-    page.fill('input[type=search]', "xss-probe-01")
-    page.click('#main form button[type=submit]')
+    page.fill("input[type=search]", "xss-probe-01")
+    page.click("#main form button[type=submit]")
     row = page.locator("tr.clickable", has_text="onerror")
     row.wait_for()
     row.click()
@@ -249,7 +259,11 @@ def test_wrong_password_api_key_login_and_sign_out(browser, console, ctx):
     assert page.is_hidden("#shell")
 
     key = ctx.auth.create_api_key(
-        console["tenant"], "user:ui-test", name="console test", roles=["analyst"], kind="service",
+        console["tenant"],
+        "user:ui-test",
+        name="console test",
+        roles=["analyst"],
+        kind="service",
         known_node_types=set(ctx.ontology.node_types),
     )["api_key"]
     page.click('button[data-mode="key"]')

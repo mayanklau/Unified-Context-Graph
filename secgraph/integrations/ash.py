@@ -86,15 +86,23 @@ class GraphVulnerabilityConnector:
         except SecurityGraphError:
             # No analytics permission: fall back to the raw relationships.
             matched = self.graph.match(
-                {"start": {"id": node["id"]},
-                 "steps": [{"edge": "HAS_FINDING", "node": {"type": "Finding"}},
-                           {"edge": "INSTANCE_OF", "node": {"type": "Vulnerability"}}]}
+                {
+                    "start": {"id": node["id"]},
+                    "steps": [
+                        {"edge": "HAS_FINDING", "node": {"type": "Finding"}},
+                        {"edge": "INSTANCE_OF", "node": {"type": "Vulnerability"}},
+                    ],
+                }
             )
             findings = [
-                {"finding_id": m["nodes"][1]["id"], "status": m["nodes"][1]["properties"].get("status"),
-                 "vulnerability": m["nodes"][2]["name"], "kev": m["nodes"][2]["properties"].get("kev", False),
-                 "epss": m["nodes"][2]["properties"].get("epss"),
-                 "cvss_score": m["nodes"][2]["properties"].get("cvss_score")}
+                {
+                    "finding_id": m["nodes"][1]["id"],
+                    "status": m["nodes"][1]["properties"].get("status"),
+                    "vulnerability": m["nodes"][2]["name"],
+                    "kev": m["nodes"][2]["properties"].get("kev", False),
+                    "epss": m["nodes"][2]["properties"].get("epss"),
+                    "cvss_score": m["nodes"][2]["properties"].get("cvss_score"),
+                }
                 for m in matched["matches"]
             ]
         return {

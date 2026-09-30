@@ -253,13 +253,9 @@ def normalize_identifiers(
 
 def check_edge_endpoints(edge_type: str, definition: EdgeTypeDef, source_type: str, target_type: str) -> None:
     if source_type not in definition.source:
-        raise ValidationFailed(
-            f"{edge_type}: source must be one of {', '.join(definition.source)}, got {source_type}"
-        )
+        raise ValidationFailed(f"{edge_type}: source must be one of {', '.join(definition.source)}, got {source_type}")
     if target_type not in definition.target:
-        raise ValidationFailed(
-            f"{edge_type}: target must be one of {', '.join(definition.target)}, got {target_type}"
-        )
+        raise ValidationFailed(f"{edge_type}: target must be one of {', '.join(definition.target)}, got {target_type}")
 
 
 # --------------------------------------------------------------------------- #

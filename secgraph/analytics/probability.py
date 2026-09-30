@@ -128,8 +128,9 @@ def best_path_tree(
 # --------------------------------------------------------------------------- #
 # Estimate: seeded Monte Carlo (and exact enumeration for tiny graphs)
 # --------------------------------------------------------------------------- #
-def _propagate(alive: np.ndarray, src: np.ndarray, order: np.ndarray, starts: np.ndarray, heads: np.ndarray,
-               reached: np.ndarray) -> np.ndarray:
+def _propagate(
+    alive: np.ndarray, src: np.ndarray, order: np.ndarray, starts: np.ndarray, heads: np.ndarray, reached: np.ndarray
+) -> np.ndarray:
     """Close ``reached`` (worlds × vertices) under the alive edges of each world, in place."""
     src_sorted = src[order]
     alive_sorted = alive[:, order]

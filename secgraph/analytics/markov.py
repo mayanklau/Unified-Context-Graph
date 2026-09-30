@@ -101,9 +101,9 @@ def absorbing_chain(
         reach_p, attempts, detect_p = (float(solution[index, c]) for c in range(3))
         method, converged = "dense", True
     else:
-        a = np.zeros(n)
-        t = np.zeros(n)
-        k = np.zeros(n)
+        a: np.ndarray = np.zeros(n)
+        t: np.ndarray = np.zeros(n)
+        k: np.ndarray = np.zeros(n)
         converged = False
         for _ in range(max_iterations):
             a_new = to_target + np.bincount(i_src, weights=i_q * a[i_dst], minlength=n)

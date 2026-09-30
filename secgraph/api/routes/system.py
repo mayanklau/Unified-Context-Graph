@@ -48,23 +48,23 @@ def metrics(ctx: Ctx, request: Request) -> Response:
     with ctx.db.snapshot() as session:
         GRAPH_NODES.clear()
         for tenant, node_type, count in session.execute(
-            select(Node.tenant_id, Node.type, func.count()).where(Node.deleted_at.is_(None)).group_by(
-                Node.tenant_id, Node.type
-            )
+            select(Node.tenant_id, Node.type, func.count())
+            .where(Node.deleted_at.is_(None))
+            .group_by(Node.tenant_id, Node.type)
         ):
             GRAPH_NODES.labels(tenant=tenant, type=node_type).set(count)
         GRAPH_EDGES.clear()
         for tenant, edge_type, count in session.execute(
-            select(Edge.tenant_id, Edge.type, func.count()).where(Edge.valid_to.is_(None)).group_by(
-                Edge.tenant_id, Edge.type
-            )
+            select(Edge.tenant_id, Edge.type, func.count())
+            .where(Edge.valid_to.is_(None))
+            .group_by(Edge.tenant_id, Edge.type)
         ):
             GRAPH_EDGES.labels(tenant=tenant, type=edge_type).set(count)
         QUARANTINE_OPEN.clear()
         for tenant, count in session.execute(
-            select(QuarantinedRecord.tenant_id, func.count()).where(QuarantinedRecord.status == "open").group_by(
-                QuarantinedRecord.tenant_id
-            )
+            select(QuarantinedRecord.tenant_id, func.count())
+            .where(QuarantinedRecord.status == "open")
+            .group_by(QuarantinedRecord.tenant_id)
         ):
             QUARANTINE_OPEN.labels(tenant=tenant).set(count)
     return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)

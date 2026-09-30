@@ -6,7 +6,7 @@ from secgraph.ontology.model import Ontology, ProbabilityModel, PropertyDef
 
 
 def _type(definition: PropertyDef) -> str:
-    text = definition.type
+    text: str = definition.type
     if definition.type == "enum":
         text = "one of " + ", ".join(f"`{v}`" for v in definition.values or ())
     bounds = []
@@ -50,7 +50,12 @@ def render_markdown(ontology: Ontology) -> str:
         out += ["", f"### {name}", "", node.description, ""]
         if node.ttl_days:
             out += [f"Expires when not re-observed for {node.ttl_days} days.", ""]
-        out += ["**Identifiers** (in matching priority)", "", "| Kind | Strength | Normalised as | Notes |", "|---|---|---|---|"]
+        out += [
+            "**Identifiers** (in matching priority)",
+            "",
+            "| Kind | Strength | Normalised as | Notes |",
+            "|---|---|---|---|",
+        ]
         for ident in node.identifiers:
             if not ident.match:
                 strength = "lookup only"
@@ -106,7 +111,8 @@ def render_markdown(ontology: Ontology) -> str:
     for entry in sem.entries:
         where = ", ".join(f"{k}={v}" for k, v in entry.where.items())
         out.append(
-            f"| `{entry.name}` | {entry.node_type}" + (f" where {where}" if where else "")
+            f"| `{entry.name}` | {entry.node_type}"
+            + (f" where {where}" if where else "")
             + f" | {_probability(entry.probability)} | {', '.join(entry.mitigated_by) or '—'} | "
             f"{'yes' if entry.enabled else 'no'} |"
         )
@@ -151,7 +157,8 @@ def render_markdown(ontology: Ontology) -> str:
         f"| CVSS base-score weight | {exploit.cvss_score_weight:g} |",
         f"| Default when nothing is known | {exploit.unknown_default:g} |",
         "| Severity fallback (no linked vulnerability) | "
-        + ", ".join(f"{k} {v:g}" for k, v in exploit.severity_fallback.items()) + " |",
+        + ", ".join(f"{k} {v:g}" for k, v in exploit.severity_fallback.items())
+        + " |",
         f"| Remotely exploitable attack vectors | {', '.join(exploit.remote_vectors)} |",
         f"| Unknown vector treated as remote | {'yes' if exploit.unknown_vector_is_remote else 'no'} |",
         f"| Probability cap | {exploit.max_probability:g} |",
@@ -161,7 +168,8 @@ def render_markdown(ontology: Ontology) -> str:
         "| Parameter | Value |",
         "|---|---|",
         "| Default effectiveness by type | "
-        + ", ".join(f"{k} {v:g}" for k, v in sem.controls.default_effectiveness.items()) + " |",
+        + ", ".join(f"{k} {v:g}" for k, v in sem.controls.default_effectiveness.items())
+        + " |",
         f"| Fallback effectiveness | {sem.controls.fallback_effectiveness:g} |",
         f"| Degraded control factor | {sem.controls.degraded_factor:g} |",
         f"| Maximum combined reduction | {sem.controls.max_combined_reduction:g} |",

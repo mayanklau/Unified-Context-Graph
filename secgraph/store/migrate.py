@@ -55,7 +55,8 @@ def schema_drift(settings: Settings | None = None) -> list[Any]:
             if connection.dialect.name != "postgresql":
                 # PostgreSQL-only indexes (GIN on JSONB) are intentionally absent elsewhere.
                 differences = [
-                    d for d in differences
+                    d
+                    for d in differences
                     if not (d[0] == "add_index" and d[1].dialect_options["postgresql"].get("using"))
                 ]
             return differences

@@ -26,12 +26,19 @@ def _asset(**identifiers):
 def test_create_then_resend_is_idempotent(db, tenant, load):
     batch = {
         "nodes": [
-            {"type": "Asset", "identifiers": {"fqdn": "WEB-01.Corp.Example."}, "properties": {"criticality": "4"},
-             "ref": "a"},
-            {"type": "Vulnerability", "identifiers": {"cve": "cve-2021-44228"}, "properties": {"cvss_score": 10},
-             "ref": "v"},
-            {"type": "Finding", "identifiers": {"finding_key": "scan:1"}, "properties": {"status": "Open"},
-             "ref": "f"},
+            {
+                "type": "Asset",
+                "identifiers": {"fqdn": "WEB-01.Corp.Example."},
+                "properties": {"criticality": "4"},
+                "ref": "a",
+            },
+            {
+                "type": "Vulnerability",
+                "identifiers": {"cve": "cve-2021-44228"},
+                "properties": {"cvss_score": 10},
+                "ref": "v",
+            },
+            {"type": "Finding", "identifiers": {"finding_key": "scan:1"}, "properties": {"status": "Open"}, "ref": "f"},
         ],
         "edges": [
             {"type": "HAS_FINDING", "source": {"ref": "a"}, "target": {"ref": "f"}},
@@ -51,13 +58,20 @@ def test_create_then_resend_is_idempotent(db, tenant, load):
         assert node.name == "web-01"  # hostname derived from the FQDN outranks the FQDN itself
         assert node.properties == {"criticality": 4}  # "4" coerced to the declared integer
         assert node.version == 1
-        aliases = {(a.kind, a.value) for a in s.execute(
-            select(NodeAlias).where(NodeAlias.node_id == node.id)).scalars()}
+        aliases = {
+            (a.kind, a.value) for a in s.execute(select(NodeAlias).where(NodeAlias.node_id == node.id)).scalars()
+        }
         assert aliases == {("fqdn", "web-01.corp.example"), ("hostname", "web-01")}
-        assert s.execute(select(func.count()).select_from(NodeVersion)
-                         .where(NodeVersion.tenant_id == tenant)).scalar_one() == 0
-        events = [e.kind for e in s.execute(
-            select(ChangeEvent).where(ChangeEvent.tenant_id == tenant).order_by(ChangeEvent.seq)).scalars()]
+        assert (
+            s.execute(select(func.count()).select_from(NodeVersion).where(NodeVersion.tenant_id == tenant)).scalar_one()
+            == 0
+        )
+        events = [
+            e.kind
+            for e in s.execute(
+                select(ChangeEvent).where(ChangeEvent.tenant_id == tenant).order_by(ChangeEvent.seq)
+            ).scalars()
+        ]
         assert events == ["node.created"] * 3 + ["edge.created"] * 2
         batches = s.execute(select(IngestBatch).where(IngestBatch.tenant_id == tenant)).scalars().all()
         assert [b.status for b in batches] == ["completed", "completed"]
@@ -106,8 +120,11 @@ def test_invalid_records_are_quarantined_not_dropped(db, tenant, load):
         ],
         edges=[
             {"type": "HAS_FINDING", "source": {"ref": "nope"}, "target": {"ref": "nope2"}},
-            {"type": "HAS_FINDING", "source": {"type": "Asset", "identifiers": {"fqdn": "good.corp.example"}},
-             "target": {"type": "Asset", "identifiers": {"fqdn": "other.corp.example"}}},
+            {
+                "type": "HAS_FINDING",
+                "source": {"type": "Asset", "identifiers": {"fqdn": "good.corp.example"}},
+                "target": {"type": "Asset", "identifiers": {"fqdn": "other.corp.example"}},
+            },
         ],
     )
     assert result.nodes.created == 1
@@ -130,15 +147,27 @@ def test_invalid_records_are_quarantined_not_dropped(db, tenant, load):
 def test_edge_endpoint_by_identifier_creates_stub_then_full_record_fills_it(db, tenant, load):
     r = load(
         nodes=[{**_asset(fqdn="h.corp.example"), "ref": "h"}],
-        edges=[{"type": "RUNS", "source": {"ref": "h"},
-                "target": {"type": "Software", "identifiers": {"purl": "pkg:maven/org.apache/log4j-core@2.14.1"}}}],
+        edges=[
+            {
+                "type": "RUNS",
+                "source": {"ref": "h"},
+                "target": {"type": "Software", "identifiers": {"purl": "pkg:maven/org.apache/log4j-core@2.14.1"}},
+            }
+        ],
     )
     assert r.stubs_created == 1 and r.edges.created == 1
     with db.transaction() as s:
         sw = s.execute(select(Node).where(Node.tenant_id == tenant, Node.type == "Software")).scalar_one()
         assert sw.stub is True and sw.version == 1
-    r2 = load(nodes=[{"type": "Software", "identifiers": {"purl": "pkg:maven/org.apache/log4j-core@2.14.1"},
-                      "properties": {"name": "log4j-core", "version": "2.14.1"}}])
+    r2 = load(
+        nodes=[
+            {
+                "type": "Software",
+                "identifiers": {"purl": "pkg:maven/org.apache/log4j-core@2.14.1"},
+                "properties": {"name": "log4j-core", "version": "2.14.1"},
+            }
+        ]
+    )
     assert r2.nodes.updated == 1 and r2.nodes.created == 0
     with db.transaction() as s:
         sw = s.execute(select(Node).where(Node.tenant_id == tenant, Node.type == "Software")).scalar_one()
@@ -147,8 +176,13 @@ def test_edge_endpoint_by_identifier_creates_stub_then_full_record_fills_it(db, 
 
 def test_edge_versions_and_delete(db, tenant, load):
     nodes = [{**_asset(fqdn="a.corp.example"), "ref": "a"}, {**_asset(fqdn="b.corp.example"), "ref": "b"}]
-    edge = {"type": "CONNECTS_TO", "source": {"ref": "a"}, "target": {"ref": "b"}, "key": "tcp/443",
-            "properties": {"port": 443, "protocol": "tcp"}}
+    edge = {
+        "type": "CONNECTS_TO",
+        "source": {"ref": "a"},
+        "target": {"ref": "b"},
+        "key": "tcp/443",
+        "properties": {"port": 443, "protocol": "tcp"},
+    }
     load(nodes=nodes, edges=[edge])
     t1 = datetime.now(UTC)
     r = load(nodes=nodes, edges=[{**edge, "properties": {"port": 443, "protocol": "tcp", "service": "https"}}])
@@ -192,23 +226,29 @@ def test_node_delete_closes_edges_and_reingest_restores_same_id(db, tenant, load
 
 
 def test_self_loops_are_rejected(tenant, load):
-    r = load(nodes=[{**_asset(fqdn="a.corp.example"), "ref": "a"}],
-             edges=[{"type": "CONNECTS_TO", "source": {"ref": "a"}, "target": {"ref": "a"}}])
+    r = load(
+        nodes=[{**_asset(fqdn="a.corp.example"), "ref": "a"}],
+        edges=[{"type": "CONNECTS_TO", "source": {"ref": "a"}, "target": {"ref": "a"}}],
+    )
     assert r.edges.quarantined == 1 and "same entity" in r.rejections[0].reason
 
 
 # ---- entity resolution ------------------------------------------------------
 def _assets(db, tenant):
     with db.transaction() as s:
-        return s.execute(select(Node).where(Node.tenant_id == tenant, Node.type == "Asset",
-                                            Node.deleted_at.is_(None))).scalars().all()
+        return (
+            s.execute(select(Node).where(Node.tenant_id == tenant, Node.type == "Asset", Node.deleted_at.is_(None)))
+            .scalars()
+            .all()
+        )
 
 
 def test_two_sources_describing_one_host_merge_on_a_strong_identifier(db, tenant, load):
-    load(nodes=[{**_asset(fqdn="web-01.corp.example", mac="00-1A-2B-3C-4D-5E"), "properties": {"os": "Ubuntu"}}],
-         source="cmdb")
-    load(nodes=[{**_asset(mac="001a.2b3c.4d5e", agent_id="EDR-77"), "properties": {"owner": "payments"}}],
-         source="edr")
+    load(
+        nodes=[{**_asset(fqdn="web-01.corp.example", mac="00-1A-2B-3C-4D-5E"), "properties": {"os": "Ubuntu"}}],
+        source="cmdb",
+    )
+    load(nodes=[{**_asset(mac="001a.2b3c.4d5e", agent_id="EDR-77"), "properties": {"owner": "payments"}}], source="edr")
     assets = _assets(db, tenant)
     assert len(assets) == 1
     assert assets[0].properties == {"os": "Ubuntu", "owner": "payments"}
@@ -282,10 +322,12 @@ def test_ip_is_searchable_but_never_merges(db, tenant, load):
 
 
 def test_duplicates_inside_one_batch_resolve_to_one_node(db, tenant, load):
-    r = load(nodes=[
-        {**_asset(fqdn="dup.corp.example"), "properties": {"os": "A"}, "ref": "1"},
-        {**_asset(fqdn="DUP.corp.example"), "properties": {"owner": "x"}, "ref": "2"},
-    ])
+    r = load(
+        nodes=[
+            {**_asset(fqdn="dup.corp.example"), "properties": {"os": "A"}, "ref": "1"},
+            {**_asset(fqdn="DUP.corp.example"), "properties": {"owner": "x"}, "ref": "2"},
+        ]
+    )
     assert r.refs["1"] == r.refs["2"]
     assert r.nodes.created == 1 and r.nodes.updated == 1
     assert _assets(db, tenant)[0].properties == {"os": "A", "owner": "x"}
@@ -300,8 +342,11 @@ def test_lower_priority_source_cannot_overwrite_higher(db, ontology, tenant):
     service = IngestService(db, ontology, make_settings(db.settings.database_url, source_priority="cmdb,scanner"))
 
     def send(source, props):
-        return service.ingest(tenant, "user:test", IngestRequest(
-            source=source, nodes=[{**_asset(fqdn="p.corp.example"), "properties": props}]))
+        return service.ingest(
+            tenant,
+            "user:test",
+            IngestRequest(source=source, nodes=[{**_asset(fqdn="p.corp.example"), "properties": props}]),
+        )
 
     send("cmdb", {"owner": "payments", "os": "RHEL"})
     r = send("scanner", {"owner": "unknown", "location": "DC1"})
@@ -316,8 +361,10 @@ def test_lower_priority_source_cannot_overwrite_higher(db, ontology, tenant):
 def test_older_observation_from_same_source_does_not_overwrite(db, tenant, load):
     now = datetime.now(UTC)
     load(nodes=[{**_asset(fqdn="s.corp.example"), "properties": {"os": "new"}}], observed_at=now.isoformat())
-    r = load(nodes=[{**_asset(fqdn="s.corp.example"), "properties": {"os": "old", "owner": "late"}}],
-             observed_at=(now - timedelta(days=2)).isoformat())
+    r = load(
+        nodes=[{**_asset(fqdn="s.corp.example"), "properties": {"os": "old", "owner": "late"}}],
+        observed_at=(now - timedelta(days=2)).isoformat(),
+    )
     assert r.nodes.updated == 1  # owner was missing, so it is filled
     node = _assets(db, tenant)[0]
     assert node.properties == {"os": "new", "owner": "late"}
@@ -335,7 +382,9 @@ def test_tenants_are_isolated(db, ingest_service, load, tenant):
 
     load(nodes=[_asset(fqdn="shared.corp.example")])
     other = tenant + "-b"
-    r = ingest_service.ingest(other, "user:test", IngestRequest(source="test", nodes=[_asset(fqdn="shared.corp.example")]))
+    r = ingest_service.ingest(
+        other, "user:test", IngestRequest(source="test", nodes=[_asset(fqdn="shared.corp.example")])
+    )
     assert r.nodes.created == 1  # same identifier, different tenant: a different node
     with db.transaction() as s:
         assert len(GraphReader(s, tenant).find_by_identifier("shared.corp.example")) == 1
@@ -352,7 +401,9 @@ def test_batch_size_limit(db, ontology, tenant):
 
     service = IngestService(db, ontology, make_settings(db.settings.database_url, ingest_max_records=2))
     with pytest.raises(LimitExceeded):
-        service.ingest(tenant, "u", IngestRequest(source="t", nodes=[_asset(fqdn=f"h{i}.corp.example") for i in range(3)]))
+        service.ingest(
+            tenant, "u", IngestRequest(source="t", nodes=[_asset(fqdn=f"h{i}.corp.example") for i in range(3)])
+        )
 
 
 def test_chunking_keeps_refs_across_chunks(db, ontology, tenant):
@@ -366,8 +417,12 @@ def test_chunking_keeps_refs_across_chunks(db, ontology, tenant):
     r = service.ingest(tenant, "u", IngestRequest(source="t", nodes=nodes, edges=edges))
     assert r.nodes.created == 10 and r.edges.created == 9
     with db.transaction() as s:
-        seqs = [e.seq for e in s.execute(select(ChangeEvent).where(ChangeEvent.tenant_id == tenant)
-                                         .order_by(ChangeEvent.seq)).scalars()]
+        seqs = [
+            e.seq
+            for e in s.execute(
+                select(ChangeEvent).where(ChangeEvent.tenant_id == tenant).order_by(ChangeEvent.seq)
+            ).scalars()
+        ]
         assert seqs == list(range(1, 20))
 
 
@@ -382,8 +437,11 @@ def test_merge_moves_identity_edges_and_redirects_old_id(db, ontology, settings,
     r = load(
         nodes=[
             {**_asset(fqdn="app.prod.example"), "properties": {"os": "RHEL"}, "ref": "keep"},
-            {**_asset(agent_id="edr-9", hostname="app2"), "properties": {"os": "Linux", "owner": "payments"},
-             "ref": "dup"},
+            {
+                **_asset(agent_id="edr-9", hostname="app2"),
+                "properties": {"os": "Linux", "owner": "payments"},
+                "ref": "dup",
+            },
             {**_asset(fqdn="peer.corp.example"), "ref": "peer"},
             {"type": "Finding", "identifiers": {"finding_key": "f1"}, "ref": "f"},
         ],
@@ -406,7 +464,8 @@ def test_merge_moves_identity_edges_and_redirects_old_id(db, ontology, settings,
         assert reader.get_node(dup) is None
         edges, _ = reader.edges_of([keep])
         assert sorted((e.type, e.target) for e in edges) == sorted(
-            [("HAS_FINDING", r.refs["f"]), ("CONNECTS_TO", r.refs["peer"])])
+            [("HAS_FINDING", r.refs["f"]), ("CONNECTS_TO", r.refs["peer"])]
+        )
         ids = reader.identifiers_for([keep])[keep]
         assert ids["agent_id"] == ["edr-9"] and ids["fqdn"] == ["app.prod.example"]
         # history is intact: before the merge the duplicate existed with its own edges
@@ -422,8 +481,12 @@ def test_merge_refuses_different_types_and_missing_nodes(db, ontology, settings,
 
     from secgraph.errors import Conflict, NotFound, ValidationFailed
 
-    r = load(nodes=[{**_asset(fqdn="a.corp.example"), "ref": "a"},
-                    {"type": "Finding", "identifiers": {"finding_key": "f"}, "ref": "f"}])
+    r = load(
+        nodes=[
+            {**_asset(fqdn="a.corp.example"), "ref": "a"},
+            {"type": "Finding", "identifiers": {"finding_key": "f"}, "ref": "f"},
+        ]
+    )
     curation = _curation(db, ontology, settings, ingest_service)
     with pytest.raises(Conflict):
         curation.merge_nodes(tenant, "u", r.refs["a"], r.refs["f"])
@@ -451,13 +514,17 @@ def test_quarantine_replay_after_fix(db, ontology, settings, ingest_service, ten
 
 def test_ttl_expiry_closes_stale_edges_and_nodes(db, ontology, settings, ingest_service, tenant, load):
     old = (datetime.now(UTC) - timedelta(days=45)).isoformat()
-    nodes = [{**_asset(fqdn="a.corp.example"), "ref": "a"}, {**_asset(fqdn="b.corp.example"), "ref": "b"},
-             {**_asset(fqdn="c.corp.example"), "ref": "c"}]
-    load(nodes=nodes, edges=[{"type": "CONNECTS_TO", "source": {"ref": "a"}, "target": {"ref": "b"}}],
-         observed_at=old)
+    nodes = [
+        {**_asset(fqdn="a.corp.example"), "ref": "a"},
+        {**_asset(fqdn="b.corp.example"), "ref": "b"},
+        {**_asset(fqdn="c.corp.example"), "ref": "c"},
+    ]
+    load(nodes=nodes, edges=[{"type": "CONNECTS_TO", "source": {"ref": "a"}, "target": {"ref": "b"}}], observed_at=old)
     load(nodes=nodes, edges=[{"type": "CONNECTS_TO", "source": {"ref": "a"}, "target": {"ref": "c"}}])
-    load(nodes=[{"type": "Indicator", "identifiers": {"indicator": "198.51.100.7"}}],
-         observed_at=(datetime.now(UTC) - timedelta(days=400)).isoformat())
+    load(
+        nodes=[{"type": "Indicator", "identifiers": {"indicator": "198.51.100.7"}}],
+        observed_at=(datetime.now(UTC) - timedelta(days=400)).isoformat(),
+    )
     curation = _curation(db, ontology, settings, ingest_service)
     assert curation.expire_stale(tenant) == {"nodes": 1, "edges": 1}  # CONNECTS_TO ttl 30d, Indicator ttl 180d
     assert curation.expire_stale(tenant) == {"nodes": 0, "edges": 0}

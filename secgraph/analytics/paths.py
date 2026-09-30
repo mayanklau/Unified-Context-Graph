@@ -24,7 +24,7 @@ class Path:
 
 def step_costs(probabilities: np.ndarray) -> list[float]:
     with np.errstate(divide="ignore"):
-        return (-np.log(probabilities)).tolist()  # type: ignore[no-any-return]
+        return (-np.log(probabilities)).tolist()
 
 
 def _trace(parent: list[int], edge_src: list[int], source: int, target: int) -> tuple[list[int], list[int]] | None:
@@ -59,8 +59,15 @@ def best_path(
     allowed: np.ndarray | None = None,
 ) -> Path | None:
     cost, parent = best_path_tree(
-        n, adjacency, edge_dst, costs, source,
-        blocked_edges=blocked_edges, blocked_nodes=blocked_nodes, allowed=allowed, target=target,
+        n,
+        adjacency,
+        edge_dst,
+        costs,
+        source,
+        blocked_edges=blocked_edges,
+        blocked_nodes=blocked_nodes,
+        allowed=allowed,
+        target=target,
     )
     if math.isinf(cost[target]):
         return None
@@ -102,8 +109,16 @@ def k_best_paths(
             )
             blocked_nodes = frozenset(root_nodes[:-1])
             spur = best_path(
-                n, adjacency, edge_src, edge_dst, costs, spur_node, target,
-                blocked_edges=blocked_edges, blocked_nodes=blocked_nodes, allowed=allowed,
+                n,
+                adjacency,
+                edge_src,
+                edge_dst,
+                costs,
+                spur_node,
+                target,
+                blocked_edges=blocked_edges,
+                blocked_nodes=blocked_nodes,
+                allowed=allowed,
             )
             if spur is None:
                 continue

@@ -20,8 +20,14 @@ log = get_logger(__name__)
 
 def run_maintenance(ctx: AppContext) -> dict[str, Any]:
     """Expire stale graph elements, apply retention and archive expired notes, for every tenant."""
-    totals = {"tenants": 0, "nodes_expired": 0, "edges_expired": 0, "change_events_pruned": 0,
-              "versions_pruned": 0, "notes_archived": 0}
+    totals = {
+        "tenants": 0,
+        "nodes_expired": 0,
+        "edges_expired": 0,
+        "change_events_pruned": 0,
+        "versions_pruned": 0,
+        "notes_archived": 0,
+    }
     for tenant_id in ctx.curation.tenants():
         try:
             expired = ctx.curation.expire_stale(tenant_id)
@@ -59,7 +65,7 @@ def run_forever(ctx: AppContext, stop: threading.Event | None = None) -> None:
         try:
             stats = ctx.webhooks.deliver_pending()
             if stats["delivered"] or stats["failed"]:
-                log.info("webhook pass", **stats)
+                log.info("webhook pass", delivered=stats["delivered"], failed=stats["failed"])
         except Exception:
             log.error("webhook pass failed", exc_info=True)
         if time.monotonic() >= next_maintenance:

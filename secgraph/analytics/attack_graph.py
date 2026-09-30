@@ -378,8 +378,10 @@ class _Builder:
                 base = float(model.value or 0.0)
             else:
                 raw = edge_properties.get(model.property or "")
-                base = float((model.values or {}).get(str(raw), model.default or 0.0)) if raw is not None else float(
-                    model.default or 0.0
+                base = (
+                    float((model.values or {}).get(str(raw), model.default or 0.0))
+                    if raw is not None
+                    else float(model.default or 0.0)
                 )
             seen: dict[str, ControlInfo] = {}
             for control in (*origin_controls, *destination_controls):
@@ -416,15 +418,19 @@ class _Builder:
                     (source, target) if rule.attacker_moves == "source_to_target" else (target, source)
                 )
                 self._add_step(
-                    origin, destination, rule.name, rule.probability, rule.mitigated_by, rule.control_on,
-                    lineage, properties,
+                    origin,
+                    destination,
+                    rule.name,
+                    rule.probability,
+                    rule.mitigated_by,
+                    rule.control_on,
+                    lineage,
+                    properties,
                 )
 
     def load_entries(self) -> None:
         for rule, idx in self.entry_matches:
-            self._add_step(
-                ATTACKER_INDEX, idx, rule.name, rule.probability, rule.mitigated_by, "destination", None, {}
-            )
+            self._add_step(ATTACKER_INDEX, idx, rule.name, rule.probability, rule.mitigated_by, "destination", None, {})
 
     def detection(self) -> np.ndarray:
         params = self.sem.controls

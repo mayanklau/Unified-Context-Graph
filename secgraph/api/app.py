@@ -129,8 +129,13 @@ def create_app(settings: Settings | None = None, *, context: AppContext | None =
             upgrade(settings)
         ctx.auth.bootstrap()
         app.state.ctx = ctx
-        log.info("started", version=__version__, environment=settings.environment, dialect=ctx.db.dialect,
-                 ontology=f"{ctx.ontology.name} {ctx.ontology.version}")
+        log.info(
+            "started",
+            version=__version__,
+            environment=settings.environment,
+            dialect=ctx.db.dialect,
+            ontology=f"{ctx.ontology.name} {ctx.ontology.version}",
+        )
         try:
             yield
         finally:
@@ -170,7 +175,9 @@ def create_app(settings: Settings | None = None, *, context: AppContext | None =
         finally:
             elapsed = time.perf_counter() - started
             route = request.scope.get("route")
-            template = getattr(route, "path", None) or ("/assets" if request.url.path.startswith("/assets") else "other")
+            template = getattr(route, "path", None) or (
+                "/assets" if request.url.path.startswith("/assets") else "other"
+            )
             HTTP_REQUESTS.labels(method=request.method, route=template, status=str(status)).inc()
             HTTP_LATENCY.labels(method=request.method, route=template).observe(elapsed)
             if template not in ("/health", "/ready", "/metrics", "/assets"):
@@ -228,8 +235,13 @@ def create_app(settings: Settings | None = None, *, context: AppContext | None =
 
     # ---- operator console (static, no external assets) ---------------------
     static = resources.files("secgraph").joinpath("static")
-    media_types = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
-                   ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".json": "application/json"}
+    media_types = {
+        ".html": "text/html; charset=utf-8",
+        ".js": "text/javascript; charset=utf-8",
+        ".css": "text/css; charset=utf-8",
+        ".svg": "image/svg+xml",
+        ".json": "application/json",
+    }
 
     def _asset(name: str) -> Response:
         if "/" in name or "\\" in name or name.startswith("."):

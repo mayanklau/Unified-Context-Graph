@@ -44,7 +44,7 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, default=str, separators=(",", ":"))
 
 
-class _KVAdapter(logging.LoggerAdapter):  # type: ignore[type-arg]
+class _KVAdapter(logging.LoggerAdapter):
     """``log.info("event", key=value)`` — keyword arguments become JSON fields."""
 
     def process(self, msg: Any, kwargs: Any) -> tuple[Any, Any]:

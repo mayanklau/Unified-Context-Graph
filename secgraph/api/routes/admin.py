@@ -37,7 +37,11 @@ def list_users(ctx: Ctx, principal: UserAdmin) -> dict[str, Any]:
 @router.post("/users", summary="Create a user", status_code=201)
 def create_user(body: UserCreateBody, ctx: Ctx, principal: UserAdmin) -> dict[str, Any]:
     return ctx.auth.create_user(
-        principal.tenant_id, principal.id, username=body.username, password=body.password, roles=body.roles,
+        principal.tenant_id,
+        principal.id,
+        username=body.username,
+        password=body.password,
+        roles=body.roles,
         allow_platform_admin=principal.can("admin:tenants"),
     )
 
@@ -45,7 +49,12 @@ def create_user(body: UserCreateBody, ctx: Ctx, principal: UserAdmin) -> dict[st
 @router.patch("/users/{username}", summary="Change a user's roles, password or disabled state")
 def update_user(username: str, body: UserUpdateBody, ctx: Ctx, principal: UserAdmin) -> dict[str, Any]:
     return ctx.auth.update_user(
-        principal.tenant_id, principal.id, username, roles=body.roles, disabled=body.disabled, password=body.password,
+        principal.tenant_id,
+        principal.id,
+        username,
+        roles=body.roles,
+        disabled=body.disabled,
+        password=body.password,
         allow_platform_admin=principal.can("admin:tenants"),
     )
 
@@ -62,8 +71,13 @@ def list_keys(ctx: Ctx, principal: KeyAdmin) -> dict[str, Any]:
 @router.post("/api-keys", summary="Create an API key; the key is shown once", status_code=201)
 def create_key(body: ApiKeyBody, ctx: Ctx, principal: KeyAdmin) -> dict[str, Any]:
     return ctx.auth.create_api_key(
-        principal.tenant_id, principal.id, name=body.name, roles=body.roles, kind=body.kind,
-        node_types=body.node_types, expires_in_days=body.expires_in_days,
+        principal.tenant_id,
+        principal.id,
+        name=body.name,
+        roles=body.roles,
+        kind=body.kind,
+        node_types=body.node_types,
+        expires_in_days=body.expires_in_days,
         known_node_types=set(ctx.ontology.node_types),
     )
 
@@ -83,12 +97,16 @@ def list_webhooks(ctx: Ctx, principal: HookAdmin) -> dict[str, Any]:
     return {"items": ctx.webhooks.list(principal.tenant_id)}
 
 
-@router.post("/webhooks", summary="Subscribe a URL to graph changes; the signing secret is shown once",
-             status_code=201)
+@router.post("/webhooks", summary="Subscribe a URL to graph changes; the signing secret is shown once", status_code=201)
 def create_webhook(body: WebhookBody, ctx: Ctx, principal: HookAdmin) -> dict[str, Any]:
     return ctx.webhooks.create(
-        principal.tenant_id, principal.id, name=body.name, url=body.url, event_kinds=body.event_kinds,
-        entity_types=body.entity_types, from_now=body.from_now,
+        principal.tenant_id,
+        principal.id,
+        name=body.name,
+        url=body.url,
+        event_kinds=body.event_kinds,
+        entity_types=body.entity_types,
+        from_now=body.from_now,
         known_types=set(ctx.ontology.node_types) | set(ctx.ontology.edge_types),
     )
 
@@ -116,7 +134,11 @@ def changes(
 ) -> dict[str, Any]:
     with ctx.db.snapshot() as session:
         events = read_changes(
-            session, principal.tenant_id, after=after, limit=limit, kinds=csv_param(kind),
+            session,
+            principal.tenant_id,
+            after=after,
+            limit=limit,
+            kinds=csv_param(kind),
             entity_types=csv_param(entity_type),
         )
         head = head_sequence(session, principal.tenant_id)

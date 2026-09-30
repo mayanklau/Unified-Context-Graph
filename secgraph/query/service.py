@@ -66,9 +66,7 @@ class QueryService:
         for type_name in types or self._all_types:
             blocked = sensitive.get(type_name, frozenset()) & set(where)
             if blocked:
-                raise PermissionDenied(
-                    f"filtering on {type_name}.{sorted(blocked)[0]} needs the 'pii:read' permission"
-                )
+                raise PermissionDenied(f"filtering on {type_name}.{sorted(blocked)[0]} needs the 'pii:read' permission")
 
     def _visible(self, records: Mapping[str, NodeRecord], scope: AccessScope) -> dict[str, NodeRecord]:
         if scope.unrestricted:
@@ -298,9 +296,7 @@ class QueryService:
                 if not frontier:
                     break
                 budget = max(cap * 4, 1000)
-                found, cut = reader.edges_of(
-                    frontier, direction=direction, types=edge_types, as_of=as_of, limit=budget
-                )
+                found, cut = reader.edges_of(frontier, direction=direction, types=edge_types, as_of=as_of, limit=budget)
                 truncated = truncated or cut
                 new_ids = []
                 for edge in found:
@@ -368,10 +364,7 @@ class QueryService:
             depth_used = 0
             while depth_used < limit_depth and frontiers[0] and frontiers[1] and meet is None:
                 side = 0 if len(frontiers[0]) <= len(frontiers[1]) else 1
-                if directed:
-                    direction = "out" if side == 0 else "in"
-                else:
-                    direction = "both"
+                direction = ("out" if side == 0 else "in") if directed else "both"
                 found, cut = reader.edges_of(
                     frontiers[side], direction=direction, types=edge_types, as_of=as_of, limit=fan_out
                 )
@@ -524,20 +517,18 @@ class QueryService:
                     if direction in ("in", "both"):
                         by_tail.setdefault(edge.target, []).append((edge.source, edge))
                 wanted_ids = list(dict.fromkeys(other for pairs in by_tail.values() for other, _e in pairs))
-                fetched = self._visible(
-                    reader.get_nodes([i for i in wanted_ids if i not in known], as_of=as_of), scope
-                )
+                fetched = self._visible(reader.get_nodes([i for i in wanted_ids if i not in known], as_of=as_of), scope)
                 known.update(fetched)
                 type_set = set(node_types) if node_types else None
                 extended: deque[tuple[tuple[str, ...], tuple[EdgeRecord, ...]]] = deque()
                 for node_ids, path_edges in paths:
                     for other, edge in by_tail.get(node_ids[-1], ()):
-                        record = known.get(other)
-                        if record is None or other in node_ids:
+                        reached = known.get(other)
+                        if reached is None or other in node_ids:
                             continue
-                        if type_set is not None and record.type not in type_set:
+                        if type_set is not None and reached.type not in type_set:
                             continue
-                        if node_where and not matches(record.properties, node_where):
+                        if node_where and not matches(reached.properties, node_where):
                             continue
                         if len(extended) >= cap:
                             truncated = True

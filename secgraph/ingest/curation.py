@@ -8,6 +8,7 @@ announced on the change feed.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from functools import partial
 from typing import Any
 
 from sqlalchemy import delete, func, or_, select, update
@@ -274,7 +275,11 @@ class CurationService:
         )
         session.add(
             NodeAlias(
-                tenant_id=tenant_id, node_type=node_type, kind=PIN_PREFIX + kind, value=value, node_id=node_id,
+                tenant_id=tenant_id,
+                node_type=node_type,
+                kind=PIN_PREFIX + kind,
+                value=value,
+                node_id=node_id,
                 weak=False,
             )
         )
@@ -359,7 +364,11 @@ class CurationService:
             ).scalar_one()
             row.status = "resolved"
             audit.record(
-                session, tenant_id, actor=principal, action="conflict.resolve", target=f"conflict:{conflict_id}",
+                session,
+                tenant_id,
+                actor=principal,
+                action="conflict.resolve",
+                target=f"conflict:{conflict_id}",
                 detail={"node_id": node_id, "merged": merged, "reason": reason},
             )
 
@@ -499,9 +508,7 @@ class CurationService:
                 .values(status="discarded", resolved_at=utcnow())
             )
             count = int(getattr(result, "rowcount", 0) or 0)
-            audit.record(
-                session, tenant_id, actor=principal, action="quarantine.discard", detail={"records": count}
-            )
+            audit.record(session, tenant_id, actor=principal, action="quarantine.discard", detail={"records": count})
             return count
 
         return self.db.run(_work)
@@ -518,7 +525,9 @@ class CurationService:
                 continue
             cutoff = now - timedelta(days=definition.ttl_days)
             while True:
-                count = self.db.run(lambda s, t=edge_type, c=cutoff: self._expire_edges(s, tenant_id, t, c, batch))
+                count = self.db.run(
+                    partial(self._expire_edges, tenant_id=tenant_id, edge_type=edge_type, cutoff=cutoff, batch=batch)
+                )
                 expired["edges"] += count
                 if count < batch:
                     break
@@ -527,12 +536,14 @@ class CurationService:
                 continue
             cutoff = now - timedelta(days=node_def.ttl_days)
             while True:
-                count = self.db.run(lambda s, t=node_type, c=cutoff: self._expire_nodes(s, tenant_id, t, c, batch))
+                count = self.db.run(
+                    partial(self._expire_nodes, tenant_id=tenant_id, node_type=node_type, cutoff=cutoff, batch=batch)
+                )
                 expired["nodes"] += count
                 if count < batch:
                     break
         if expired["nodes"] or expired["edges"]:
-            log.info("expired stale graph elements", tenant=tenant_id, **expired)
+            log.info("expired stale graph elements", tenant=tenant_id, nodes=expired["nodes"], edges=expired["edges"])
         return expired
 
     def _expire_edges(self, session: Session, tenant_id: str, edge_type: str, cutoff: datetime, batch: int) -> int:

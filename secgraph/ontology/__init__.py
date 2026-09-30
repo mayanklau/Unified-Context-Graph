@@ -38,8 +38,12 @@ def parse_ontology(document: Any, *, origin: str = "<memory>") -> Ontology:
     ontology.check_integrity()
     sem = ontology.attack_semantics
     try:
-        for rule in (*sem.entries, *sem.transitions, *sem.targets):
-            validate_predicate(rule.where)
+        for predicate in (
+            *(rule.where for rule in sem.entries),
+            *(rule.where for rule in sem.transitions),
+            *(rule.where for rule in sem.targets),
+        ):
+            validate_predicate(predicate)
     except Exception as exc:
         raise OntologyError(f"{origin}: invalid predicate in attack semantics: {exc}") from exc
     return ontology

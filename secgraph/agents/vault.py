@@ -207,8 +207,7 @@ def export_vault(ctx: AppContext, principal: Principal, root: Path, *, max_nodes
             out += ["", "## Most likely attack paths", ""]
             for path in paths["paths"]:
                 hops = " → ".join(
-                    f"{step['to']['name']} *({step['technique']}, {step['probability']:.2f})*"
-                    for step in path["steps"]
+                    f"{step['to']['name']} *({step['technique']}, {step['probability']:.2f})*" for step in path["steps"]
                 )
                 out.append(f"{path['rank']}. **p={path['probability']:.3f}** attacker → {hops}")
             out += ["", "## Fix first", "", "| vulnerability | assets | risk removed |", "|---|---|---|"]
@@ -242,7 +241,10 @@ def export_vault(ctx: AppContext, principal: Principal, root: Path, *, max_nodes
         f"| [[{t}/_index|{t}]] | {len(by_type.get(t, []))} | {counts.get(t, 0)} |" for t in types if counts.get(t)
     ]
     if truncated:
-        index += ["", f"> Export capped at {max_nodes} entities; the graph holds more. Raise `max_nodes` for a fuller export."]
+        index += [
+            "",
+            f"> Export capped at {max_nodes} entities; the graph holds more. Raise `max_nodes` for a fuller export.",
+        ]
     (root / "INDEX.md").write_text("\n".join(index) + "\n", encoding="utf-8")
 
     guide = [
@@ -267,7 +269,7 @@ def export_vault(ctx: AppContext, principal: Principal, root: Path, *, max_nodes
         "## Reading an entity page",
         "",
         "- Front matter carries the graph id; quote it when you refer to an entity.",
-        "- **Relationships** lists typed edges. `A **HAS_FINDING** → B` reads \"A has finding B\";",
+        '- **Relationships** lists typed edges. `A **HAS_FINDING** → B` reads "A has finding B";',
         "  `B → **HAS_FINDING** → this` means B points at this page.",
         "- Follow `[[links]]` to move through the graph: asset → finding → vulnerability, asset → segment, and so on.",
         "",

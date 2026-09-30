@@ -359,9 +359,13 @@ class Ontology(_Strict):
             if et2 is None:
                 errors.append(f"transition '{rule.name}' references unknown edge type '{rule.edge}'")
                 continue
-            origin, dest = (et2.source, et2.target) if rule.attacker_moves == "source_to_target" else (
-                et2.target,
-                et2.source,
+            origin, dest = (
+                (et2.source, et2.target)
+                if rule.attacker_moves == "source_to_target"
+                else (
+                    et2.target,
+                    et2.source,
+                )
             )
             if not set(origin) & set(sem.compromisable):
                 errors.append(f"transition '{rule.name}': no origin type of {rule.edge} is compromisable")

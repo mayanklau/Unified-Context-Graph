@@ -49,9 +49,7 @@ def ingest_source(
     # Leave headroom: one source record can expand into several nodes and edges.
     per_batch = max(1, settings.ingest_max_records // 2)
     for batch in mapping.apply(payload, params, source=source, max_records=per_batch):
-        result = ingest.ingest(
-            tenant_id, principal, batch.request, mapping=mapping.name, source_errors=batch.errors
-        )
+        result = ingest.ingest(tenant_id, principal, batch.request, mapping=mapping.name, source_errors=batch.errors)
         nodes.add(result.nodes)
         edges.add(result.edges)
         summary["source_records"] += batch.source_records + len(batch.errors)
