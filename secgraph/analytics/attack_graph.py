@@ -18,6 +18,7 @@ always give the same attack graph.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -125,18 +126,43 @@ class AttackGraph:
             self._in = incoming
         return self._in
 
-    def gate_probabilities(self, without_findings: frozenset[str] = frozenset()) -> np.ndarray:
-        """Gate probabilities, optionally recomputed as if some findings were remediated."""
+    def gate_changes(self, without_findings: frozenset[str], nodes: Iterable[int] | None = None) -> dict[int, float]:
+        """Gate → new probability, for the gates that change if ``without_findings`` were remediated.
+
+        ``nodes`` names the states those findings sit on, when the caller knows them; only
+        their gates are then examined instead of every gate in the graph.
+        """
         if not without_findings:
-            return self.gate_prob
-        probabilities = self.gate_prob.copy()
-        for gate, node in enumerate(self.gate_node.tolist()):
+            return {}
+        if nodes is None:
+            pairs: Iterable[tuple[int, int]] = enumerate(self.gate_node.tolist())
+        else:
+            by_node = self.memo.get("gates_by_node")
+            if by_node is None:
+                by_node = {}
+                for gate, node in enumerate(self.gate_node.tolist()):
+                    by_node.setdefault(node, []).append(gate)
+                self.memo["gates_by_node"] = by_node
+            pairs = [(gate, node) for node in nodes for gate in by_node.get(node, ())]
+        changes: dict[int, float] = {}
+        for gate, node in pairs:
             exposures = self.exposures.get(node, ())
             if not any(e.finding_id in without_findings for e in exposures):
                 continue
             remaining = [e.probability for e in exposures if e.remote and e.finding_id not in without_findings]
             raw = max(float(self.gate_floor[gate]), noisy_or(remaining))
-            probabilities[gate] = raw * float(self.gate_reduction[gate])
+            changes[gate] = raw * float(self.gate_reduction[gate])
+        return changes
+
+    def gate_probabilities(
+        self, without_findings: frozenset[str] = frozenset(), nodes: Iterable[int] | None = None
+    ) -> np.ndarray:
+        """Gate probabilities, optionally recomputed as if some findings were remediated."""
+        if not without_findings:
+            return self.gate_prob
+        probabilities = self.gate_prob.copy()
+        for gate, value in self.gate_changes(without_findings, nodes).items():
+            probabilities[gate] = value
         return probabilities
 
     def expand(self) -> Expanded:

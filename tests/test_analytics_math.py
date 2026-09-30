@@ -21,6 +21,8 @@ from secgraph.analytics.probability import (
     estimate_reach,
     exact_reach,
     noisy_or_bound,
+    noisy_or_update,
+    risk_sensitivity,
 )
 
 
@@ -89,6 +91,77 @@ def test_exact_enumeration_matches_reference_and_bounds_hold(seed):
     assert np.allclose(estimate.probability, reference, atol=1e-12)
 
 
+@pytest.mark.parametrize("seed", range(40))
+def test_incremental_bound_equals_full_recomputation(seed):
+    """What-if analysis recomputes only downstream of a change; it must match starting over."""
+    rng = random.Random(7000 + seed)
+    n = rng.randint(4, 60)
+    src, dst, p = random_graph(rng, n, rng.randint(n, 4 * n))
+    if seed % 3 == 0:  # some steps that are impossible today and become possible
+        p[rng.sample(range(p.size), k=max(1, p.size // 6))] = 0.0
+    base, _ = noisy_or_bound(n, src, dst, p)
+    altered = p.copy()
+    picks = rng.sample(range(p.size), k=rng.randint(1, max(1, p.size // 5)))
+    for edge in picks:
+        altered[edge] = rng.choice([0.0, 0.0, round(rng.uniform(0.01, 0.99), 3), 1.0])
+    changed = np.flatnonzero(altered != p)
+    expected, _ = noisy_or_bound(n, src, dst, altered)
+    got = noisy_or_update(n, src, dst, altered, base, changed)
+    assert np.allclose(got, expected, atol=1e-8), (seed, np.max(np.abs(got - expected)))
+    assert got[0] == 1.0
+    # nothing changed -> the base comes back untouched
+    assert np.array_equal(noisy_or_update(n, src, dst, p, base, np.zeros(0, dtype=np.int64)), base)
+
+
+def test_incremental_bound_on_a_long_chain_touches_only_the_tail():
+    n = 2000
+    src, dst = np.arange(n - 1), np.arange(1, n)
+    p = np.full(n - 1, 0.999)
+    base, _ = noisy_or_bound(n, src, dst, p, max_iterations=5000)
+    altered = p.copy()
+    altered[n - 10] = 0.5
+    got = noisy_or_update(n, src, dst, altered, base, np.array([n - 10]), max_iterations=5000)
+    expected, _ = noisy_or_bound(n, src, dst, altered, max_iterations=5000)
+    assert np.allclose(got, expected, atol=1e-9)
+    assert np.array_equal(got[: n - 9], base[: n - 9])  # upstream of the change is bit-for-bit the same
+
+
+@pytest.mark.parametrize("seed", range(25))
+def test_risk_sensitivity_matches_finite_differences(seed):
+    rng = random.Random(9000 + seed)
+    n = rng.randint(4, 30)
+    src, dst, p = random_graph(rng, n, rng.randint(n, 3 * n), certain=0.0)
+    p = np.clip(p, 0.05, 0.9)
+    impact = np.array([0.0] + [rng.choice([0.0, 0.0, 4.0, 16.0]) for _ in range(n - 1)])
+    impact[-1] = 8.0
+
+    def risk(probabilities):
+        return float(impact @ noisy_or_bound(n, src, dst, probabilities, tolerance=1e-14, max_iterations=20000)[0])
+
+    x, _ = noisy_or_bound(n, src, dst, p, tolerance=1e-14, max_iterations=20000)
+    gradient = risk_sensitivity(n, src, dst, p, x, impact, tolerance=1e-12, max_iterations=20000)
+    assert gradient is not None and np.all(gradient >= -1e-12)  # a likelier step never lowers risk
+    step = 1e-6
+    for edge in rng.sample(range(p.size), k=min(8, p.size)):
+        up, down = p.copy(), p.copy()
+        up[edge] += step
+        down[edge] -= step
+        numeric = (risk(up) - risk(down)) / (2 * step)
+        assert gradient[edge] == pytest.approx(numeric, rel=2e-3, abs=2e-4), (seed, edge)
+
+
+def test_risk_sensitivity_gives_up_instead_of_returning_nonsense():
+    # 0 -> 1 -> 2 -> 1 with certain steps: every state is certainly reached, nothing to differentiate
+    src, dst, p = np.array([0, 1, 2]), np.array([1, 2, 1]), np.array([1.0, 1.0, 1.0])
+    x, _ = noisy_or_bound(3, src, dst, p)
+    gradient = risk_sensitivity(3, src, dst, p, x, np.array([0.0, 1.0, 1.0]))
+    assert gradient is None or np.all(np.isfinite(gradient))
+    assert (
+        risk_sensitivity(1, np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64), np.zeros(0), x[:1], x[:1]).size
+        == 0
+    )
+
+
 def test_bounds_coincide_on_a_tree():
     # attacker -> a -> b, attacker -> c : no shared steps, no reconvergence
     src = np.array([0, 1, 0])
@@ -145,6 +218,23 @@ def test_monte_carlo_is_reproducible_and_within_error_of_exact(seed, monkeypatch
     # chunking must not change the statistics
     chunked = estimate_reach(n, src, dst, p, samples=20000, seed=42, budget=18 * 1000)
     assert np.all(np.abs(chunked.probability - reference) <= 5 * chunked.stderr + 1e-3)
+
+
+@pytest.mark.parametrize("samples", [1, 63, 64, 65, 1000, 4097])
+def test_monte_carlo_counts_exactly_the_requested_worlds(samples, monkeypatch):
+    """Worlds are packed 64 to a word; the padding in the last word must never count."""
+    import secgraph.analytics.probability as probability
+
+    monkeypatch.setattr(probability, "EXACT_EDGE_LIMIT", -1)
+    # 0 -> 1 is certain, 1 -> 2 never happens, 0 -> 3 is a coin flip
+    src, dst, p = np.array([0, 1, 0]), np.array([1, 2, 3]), np.array([1.0, 1e-12, 0.5])
+    for budget in (1, 64 * 3, 40_000_000):
+        result = estimate_reach(4, src, dst, p, samples=samples, seed=5, budget=budget)
+        assert result.samples == samples and result.method == "monte_carlo"
+        assert result.probability[0] == 1.0 and result.probability[1] == 1.0  # every world, no more
+        assert result.probability[2] == 0.0
+        assert 0.0 <= result.probability[3] <= 1.0
+        assert round(result.probability[3] * samples, 9) == round(result.probability[3] * samples)  # a whole count
 
 
 def test_estimate_ignores_unreachable_parts_and_handles_empty_graphs():

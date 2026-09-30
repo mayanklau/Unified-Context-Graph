@@ -82,6 +82,102 @@ def noisy_or_bound(
     return x, max_iterations
 
 
+def noisy_or_update(
+    n: int,
+    src: np.ndarray,
+    dst: np.ndarray,
+    p: np.ndarray,
+    base: np.ndarray,
+    changed: np.ndarray,
+    source: int = 0,
+    *,
+    tolerance: float = 1e-10,
+    max_iterations: int = 1000,
+) -> np.ndarray:
+    """The noisy-OR bound after the probabilities of the edges ``changed`` were altered.
+
+    ``base`` is the bound for the unaltered graph. Only vertices downstream of a changed
+    edge can move; everything else keeps its value, because nothing upstream of the change
+    depends on it. So the fixed point is recomputed on the downstream region alone, with
+    the rest of the graph as a fixed boundary. The result equals a full recomputation.
+    """
+    if changed.size == 0:
+        return base.copy()
+    # A vertex's value depends only on its ancestors through edges that can still be taken,
+    # so "downstream" follows the altered graph's positive edges from the heads of the changes.
+    affected = np.zeros(n, dtype=bool)
+    affected[dst[changed]] = True
+    live = p > 0.0
+    s, d = src[live], dst[live]
+    while True:
+        hit = affected[s] & ~affected[d]
+        if not hit.any():
+            break
+        affected[d[hit]] = True
+    affected[source] = False
+    into = affected[dst]
+    if int(into.sum()) > 0.6 * dst.size:  # most of the graph moves: the plain iteration is as cheap
+        return noisy_or_bound(n, src, dst, p, source, tolerance=tolerance, max_iterations=max_iterations)[0]
+    e_src, e_dst, e_p = src[into], dst[into], p[into]
+    inner = affected[e_src]
+    with np.errstate(divide="ignore"):
+        # Contributions arriving from outside the region never change.
+        fixed = np.bincount(
+            e_dst[~inner], weights=np.log1p(-np.minimum(base[e_src[~inner]] * e_p[~inner], 1.0)), minlength=n
+        )
+        i_src, i_dst, i_p = e_src[inner], e_dst[inner], e_p[inner]
+        x = np.where(affected, 0.0, base)
+        for _ in range(max_iterations):
+            log_miss = fixed + np.bincount(i_dst, weights=np.log1p(-np.minimum(x[i_src] * i_p, 1.0)), minlength=n)
+            updated = np.where(affected, 1.0 - np.exp(log_miss), base)
+            np.maximum(updated, x, out=updated)
+            if float(np.max(updated - x)) < tolerance:
+                return updated
+            x = updated
+    return x
+
+
+def risk_sensitivity(
+    n: int,
+    src: np.ndarray,
+    dst: np.ndarray,
+    p: np.ndarray,
+    x: np.ndarray,
+    impact: np.ndarray,
+    *,
+    tolerance: float = 1e-9,
+    max_iterations: int = 500,
+) -> np.ndarray | None:
+    """∂risk/∂p for every edge at once, where risk = Σ impact · x and ``x`` is the noisy-OR bound.
+
+    One backward (adjoint) pass replaces one re-evaluation per edge: with
+    ``g_e = (1 - x_v) / (1 - x_u·p_e)`` for an edge ``e = u→v``,
+
+        ∂x_v/∂p_e = x_u · g_e          ∂x_v/∂x_u = p_e · g_e
+
+    and the adjoint ``λ = impact + Jᵀλ`` is solved by iteration. Returns ``None`` when the
+    iteration does not settle (a graph of certain steps in a loop), so callers can fall back.
+    The result is a first-order estimate: it ranks candidate fixes, it does not score them.
+    """
+    if src.size == 0:
+        return np.zeros(0, dtype=np.float64)
+    denominator = 1.0 - x[src] * p
+    with np.errstate(divide="ignore", invalid="ignore"):
+        g = np.where(denominator > 1e-12, (1.0 - x[dst]) / denominator, 0.0)
+    # States the attacker cannot reach contribute nothing, and loops among them must not be
+    # allowed to feed the iteration.
+    weight = np.where(x[src] > 0.0, p * g, 0.0)
+    adjoint: np.ndarray = impact.astype(np.float64).copy()
+    for _ in range(max_iterations):
+        updated = impact + np.bincount(src, weights=weight * adjoint[dst], minlength=n)
+        if not np.all(np.isfinite(updated)) or float(np.max(updated)) > 1e12:
+            return None
+        if float(np.max(np.abs(updated - adjoint))) <= tolerance * max(1.0, float(np.max(updated))):
+            return np.asarray(adjoint[dst] * x[src] * g, dtype=np.float64)
+        adjoint = updated
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # Lower bound: most probable path
 # --------------------------------------------------------------------------- #
@@ -141,6 +237,60 @@ def _propagate(
         if not fresh.any():
             return reached
         reached[:, heads] |= arrivals
+
+
+def _simulate(
+    n: int,
+    src: np.ndarray,
+    dst: np.ndarray,
+    p: np.ndarray,
+    source: int,
+    samples: int,
+    rng: np.random.Generator,
+    budget: int,
+) -> np.ndarray:
+    """Count, per vertex, in how many of ``samples`` random worlds it is reachable from ``source``.
+
+    Worlds are simulated 64 at a time: bit ``b`` of word ``w`` of a row is world ``64·w + b``.
+    An edge row holds "alive in that world", a vertex row "reached in that world", so one
+    sweep over the edges advances every world at once. ``budget`` bounds the number of
+    (world, edge) pairs held in memory.
+    """
+    edges = int(src.size)
+    order, starts, heads = _edge_groups(dst)
+    src_sorted = src[order]
+    p_sorted = p[order]
+    uncertain = np.flatnonzero(p_sorted < 1.0)
+    hits = np.zeros(n, dtype=np.int64)
+    words_per_chunk = max(1, min((samples + 63) // 64, budget // (64 * max(edges, 1))))
+    # Random draws are the largest temporary: a few worlds at a time, whole bytes of them.
+    draw = max(8, min(64 * words_per_chunk, (budget // 8) // max(int(uncertain.size), 1)) // 8 * 8)
+    done = 0
+    while done < samples:
+        size = min(64 * words_per_chunk, samples - done)
+        words = (size + 63) // 64
+        alive = np.full((edges, words * 8), 0xFF, dtype=np.uint8)
+        if uncertain.size:
+            packed = np.zeros((uncertain.size, words * 8), dtype=np.uint8)
+            for offset in range(0, size, draw):
+                count = min(draw, size - offset)
+                outcome = rng.random((count, uncertain.size), dtype=np.float32) < p_sorted[uncertain][None, :]
+                block = np.packbits(outcome, axis=0, bitorder="little")
+                packed[:, offset // 8 : offset // 8 + block.shape[0]] = block.T
+            alive[uncertain] = packed
+        valid = np.packbits(np.arange(words * 64) < size, bitorder="little")  # worlds that exist in this chunk
+        alive &= valid[None, :]
+        alive_words = alive.view(np.uint64)
+        reached = np.zeros((n, words), dtype=np.uint64)
+        reached[source] = valid.view(np.uint64)
+        while True:
+            arrivals = np.bitwise_or.reduceat(reached[src_sorted] & alive_words, starts, axis=0)
+            if not (arrivals & ~reached[heads]).any():
+                break
+            reached[heads] |= arrivals
+        hits += np.bitwise_count(reached).sum(axis=1, dtype=np.int64)
+        done += size
+    return hits
 
 
 def _edge_groups(dst: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -231,18 +381,7 @@ def estimate_reach(
         return ReachEstimate(probability, stderr, 0, "exact")
 
     rng = np.random.default_rng(seed)
-    order, starts, heads = _edge_groups(local_dst)
-    hits = np.zeros(local_n, dtype=np.int64)
-    chunk = max(1, min(samples, budget // max(int(local_src.size), 1)))
-    done = 0
-    while done < samples:
-        size = min(chunk, samples - done)
-        alive = rng.random((size, local_src.size)) < sub_p[None, :]
-        reached = np.zeros((size, local_n), dtype=bool)
-        reached[:, local_source] = True
-        _propagate(alive, local_src, order, starts, heads, reached)
-        hits += reached.sum(axis=0)
-        done += size
+    hits = _simulate(local_n, local_src, local_dst, sub_p, local_source, samples, rng, budget)
     mean = hits / float(samples)
     probability[vertices] = mean
     stderr[vertices] = np.sqrt(np.maximum(mean * (1.0 - mean), 0.0) / float(samples))

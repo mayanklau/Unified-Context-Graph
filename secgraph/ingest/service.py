@@ -25,7 +25,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from pydantic import ValidationError
-from sqlalchemy import or_, select, tuple_, update
+from sqlalchemy import select, tuple_, update
 from sqlalchemy.orm import Session
 
 from secgraph.config import Settings
@@ -801,17 +801,15 @@ class IngestService:
         node.deleted_at = now
         node.changed_by = source
         session.flush()
-        closed = session.execute(
-            update(Edge)
-            .where(
-                Edge.tenant_id == tenant_id,
-                Edge.valid_to.is_(None),
-                or_(Edge.src_id == node.id, Edge.dst_id == node.id),
+        closed_count = 0
+        for side in (Edge.src_id, Edge.dst_id):  # one statement per endpoint index
+            closed = session.execute(
+                update(Edge)
+                .where(Edge.tenant_id == tenant_id, Edge.valid_to.is_(None), side == node.id)
+                .values(valid_to=now)
+                .execution_options(synchronize_session=False)
             )
-            .values(valid_to=now)
-            .execution_options(synchronize_session=False)
-        )
-        closed_count = int(getattr(closed, "rowcount", 0) or 0)
+            closed_count += int(getattr(closed, "rowcount", 0) or 0)
         changes.add(
             "node.deleted", node.type, node.id, {"name": node.name, "source": source, "edges_closed": closed_count}
         )

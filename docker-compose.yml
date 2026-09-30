@@ -1,0 +1,79 @@
+# Security Graph on one host: PostgreSQL, the API (with the console) and the worker.
+#
+#   ./scripts/quickstart.sh          # generates .env, starts everything, creates the first admin
+#   ./scripts/quickstart.sh --demo   # the same, plus the Meridian Bank demonstration estate
+#
+# Or by hand: cp .env.example .env, fill in the two secrets, then `docker compose up -d --build`.
+# The API listens on 127.0.0.1:8080 by default; put a TLS-terminating proxy in front of it
+# (deploy/compose/docker-compose.tls.yml is a ready-made one).
+
+name: security-graph
+
+x-app: &app
+  image: ${SECGRAPH_IMAGE:-security-graph:1.0.0}
+  build:
+    context: .
+    args:
+      PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11-slim}
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    SECGRAPH_ENVIRONMENT: ${SECGRAPH_ENVIRONMENT:-production}
+    SECGRAPH_DATABASE_URL: postgresql+psycopg://secgraph:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (scripts/quickstart.sh does this for you)}@db:5432/secgraph
+    SECGRAPH_JWT_SECRET: ${SECGRAPH_JWT_SECRET:?set SECGRAPH_JWT_SECRET in .env (scripts/quickstart.sh does this for you)}
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: secgraph
+      POSTGRES_DB: secgraph
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (scripts/quickstart.sh does this for you)}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secgraph -d secgraph"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
+  migrate:
+    <<: *app
+    command: ["migrate"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    command: ["serve"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${SECGRAPH_BIND:-127.0.0.1}:${SECGRAPH_PORT:-8080}:8080"
+
+  worker:
+    <<: *app
+    command: ["worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+
+volumes:
+  pgdata:

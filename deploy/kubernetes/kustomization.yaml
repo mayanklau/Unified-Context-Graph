@@ -1,0 +1,19 @@
+# kubectl apply -k deploy/kubernetes
+#
+# Before applying: create the secret (see secret.example.yaml), point the image at your
+# registry, and set the host name in ingress.yaml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: security-graph
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - migrate-job.yaml
+  - api.yaml
+  - worker.yaml
+  - networkpolicy.yaml
+  - ingress.yaml
+images:
+  - name: security-graph
+    newName: registry.bank.example/security/security-graph
+    newTag: 1.0.0

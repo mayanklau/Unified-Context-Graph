@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from functools import partial
 from typing import Any
 
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from secgraph.config import Settings
@@ -120,25 +120,19 @@ class CurationService:
                 self._pin(session, tenant_id, survivor.type, kind, value, survivor_id)
 
             # -- relationships: close the duplicate's edges, re-open them on the survivor
-            existing = {
-                (e.type, e.src_id, e.dst_id, e.edge_key): e
-                for e in session.execute(
-                    select(Edge).where(
-                        Edge.tenant_id == tenant_id,
-                        Edge.valid_to.is_(None),
-                        or_(Edge.src_id == survivor_id, Edge.dst_id == survivor_id),
-                    )
-                ).scalars()
-            }
+            def current_edges(node_id: str) -> list[Edge]:
+                found: dict[str, Edge] = {}
+                for side in (Edge.src_id, Edge.dst_id):  # one statement per endpoint index
+                    for e in session.execute(
+                        select(Edge).where(Edge.tenant_id == tenant_id, Edge.valid_to.is_(None), side == node_id)
+                    ).scalars():
+                        found[e.id] = e
+                return list(found.values())
+
+            existing = {(e.type, e.src_id, e.dst_id, e.edge_key): e for e in current_edges(survivor_id)}
             moved_edges = 0
             new_rows: list[Edge] = []
-            for edge in session.execute(
-                select(Edge).where(
-                    Edge.tenant_id == tenant_id,
-                    Edge.valid_to.is_(None),
-                    or_(Edge.src_id == duplicate_id, Edge.dst_id == duplicate_id),
-                )
-            ).scalars():
+            for edge in current_edges(duplicate_id):
                 edge.valid_to = now
                 src = survivor_id if edge.src_id == duplicate_id else edge.src_id
                 dst = survivor_id if edge.dst_id == duplicate_id else edge.dst_id

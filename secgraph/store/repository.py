@@ -419,28 +419,36 @@ class GraphReader:
         if types is not None and not types:
             return [], False
         ids = list(dict.fromkeys(node_ids))
-        out: dict[str, EdgeRecord] = {}
-        truncated = False
         extra = PropertyFilter(self.dialect).build(Edge.properties, where) if where else []
+        sides: list[Any] = []
+        if direction in ("out", "both"):
+            sides.append(Edge.src_id)
+        if direction in ("in", "both"):
+            sides.append(Edge.dst_id)
+        # One statement per side: "src IN (...) OR dst IN (...)" defeats both endpoint indexes
+        # and turns a neighbourhood lookup into a scan of the tenant's edges.
+        rows: dict[str, Edge] = {}
+        overflow = False
         for chunk in chunked(ids, 400):
-            sides: list[ColumnElement[bool]] = []
-            if direction in ("out", "both"):
-                sides.append(Edge.src_id.in_(chunk))
-            if direction in ("in", "both"):
-                sides.append(Edge.dst_id.in_(chunk))
-            stmt = select(Edge).where(Edge.tenant_id == self.tenant_id, or_(*sides), self._edge_time(as_of), *extra)
-            if types is not None:
-                stmt = stmt.where(Edge.type.in_(list(types)))
-            if limit is not None:  # most recently observed first, so truncation keeps the freshest
-                stmt = stmt.order_by(Edge.last_seen.desc(), Edge.id).limit(limit - len(out) + 1)
-            for row in self.session.execute(stmt).scalars():
-                if limit is not None and len(out) >= limit:
-                    truncated = True
-                    break
-                out[row.id] = edge_record(row)
-            if truncated:
-                break
-        return list(out.values()), truncated
+            for side in sides:
+                stmt = select(Edge).where(
+                    Edge.tenant_id == self.tenant_id, side.in_(chunk), self._edge_time(as_of), *extra
+                )
+                if types is not None:
+                    stmt = stmt.where(Edge.type.in_(list(types)))
+                if limit is not None:  # most recently observed first, so truncation keeps the freshest
+                    stmt = stmt.order_by(Edge.last_seen.desc(), Edge.id).limit(limit + 1)
+                fetched = self.session.execute(stmt).scalars().all()
+                if limit is not None and len(fetched) > limit:
+                    overflow = True
+                for row in fetched:
+                    rows[row.id] = row
+        if limit is None:
+            return [edge_record(row) for row in rows.values()], False
+        ordered = sorted(rows.values(), key=lambda row: row.id)
+        ordered.sort(key=lambda row: row.last_seen, reverse=True)
+        truncated = overflow or len(ordered) > limit
+        return [edge_record(row) for row in ordered[:limit]], truncated
 
     def edge_counts(self, node_id: str) -> dict[str, dict[str, int]]:
         """Degree by edge type and direction — cheap even for super-nodes."""

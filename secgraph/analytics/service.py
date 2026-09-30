@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -27,6 +28,8 @@ from secgraph.analytics.probability import (
     estimate_reach,
     forward_reachable,
     noisy_or_bound,
+    noisy_or_update,
+    risk_sensitivity,
 )
 from secgraph.config import Settings
 from secgraph.errors import NotFound, ValidationFailed
@@ -54,6 +57,7 @@ class _Baseline:
     fwd: np.ndarray  # expanded vertices reachable from the attacker
     edge_index: np.ndarray  # expanded edges that lie on some attacker → target route
     upper: np.ndarray  # per state
+    upper_full: np.ndarray  # per expanded vertex (states, then gates)
     costs: list[float]  # -log p per step
     lower_cost: list[float]  # best-path cost per state
     lower_parent: list[int]  # best-path incoming step per state
@@ -112,6 +116,24 @@ class AnalyticsService:
     # ------------------------------------------------------------------ #
     # Shared computations
     # ------------------------------------------------------------------ #
+    @staticmethod
+    def _memoized(graph: AttackGraph, key: str, compute: Callable[[], Any], stale: Callable[[Any], bool]) -> Any:
+        """Compute an expensive result once per attack graph.
+
+        The per-graph lock also means a tenant's heavy analytics run one at a time,
+        however many callers ask at once.
+        """
+        lock = graph.memo.setdefault("__lock__", threading.Lock())
+        cached = graph.memo.get(key)
+        if cached is not None and not stale(cached):
+            return cached
+        with lock:
+            cached = graph.memo.get(key)
+            if cached is None or stale(cached):
+                cached = compute()
+                graph.memo[key] = cached
+            return cached
+
     def _baseline(self, graph: AttackGraph) -> _Baseline:
         cached = graph.memo.get("baseline")
         if cached is not None:
@@ -133,6 +155,7 @@ class AnalyticsService:
             fwd=fwd,
             edge_index=edge_index,
             upper=upper_full[:n],
+            upper_full=upper_full,
             costs=costs,
             lower_cost=lower_cost,
             lower_parent=lower_parent,
@@ -146,9 +169,27 @@ class AnalyticsService:
         """Risk = Σ impact × P(compromise) under the noisy-OR bound, for modified edge probabilities."""
         ex = graph.expand()
         idx = base.edge_index
-        upper, _ = noisy_or_bound(ex.vertices, ex.src[idx], ex.dst[idx], p[idx])
+        changed = np.flatnonzero(p[idx] != ex.p[idx])
+        upper = noisy_or_update(ex.vertices, ex.src[idx], ex.dst[idx], p[idx], base.upper_full, changed)
         upper = upper[: graph.state_count]
         return float(graph.impact @ upper), upper
+
+    def _sensitivity(self, graph: AttackGraph, base: _Baseline) -> np.ndarray | None:
+        """∂risk/∂p per expanded edge (zero off the attacker → target routes); None if it cannot be had."""
+        if "sensitivity" in graph.memo:
+            cached: np.ndarray | None = graph.memo["sensitivity"]
+            return cached
+        ex = graph.expand()
+        idx = base.edge_index
+        impact = np.zeros(ex.vertices, dtype=np.float64)
+        impact[: graph.state_count] = graph.impact
+        partial = risk_sensitivity(ex.vertices, ex.src[idx], ex.dst[idx], ex.p[idx], base.upper_full, impact)
+        full: np.ndarray | None = None
+        if partial is not None:
+            full = np.zeros(ex.p.size, dtype=np.float64)
+            full[idx] = partial
+        graph.memo["sensitivity"] = full
+        return full
 
     def _estimate_targets(self, graph: AttackGraph, base: _Baseline) -> tuple[np.ndarray, np.ndarray, str, int]:
         cached = graph.memo.get("estimate")
@@ -686,25 +727,52 @@ class AnalyticsService:
                     entry["kev"] = entry["kev"] or e.kev
                     if e.probability > entry["sample"].probability:
                         entry["sample"] = e
-            ordered = sorted(candidates.items(), key=lambda kv: (-kv[1]["score"], kv[0]))
-            started = time.perf_counter()
-            evaluated = []
-            partial = False
-            for key, entry in ordered:
-                if time.perf_counter() - started > time_budget_s:
-                    partial = True
-                    break
-                gates = graph.gate_probabilities(frozenset(entry["findings"]))
-                p = ex.p.copy()
-                used = ex.gate_position >= 0
-                p[ex.gate_position[used]] = gates[used]
-                risk_after, upper_after = self._upper_risk(graph, base, p)
-                reduction = max(0.0, risk_before - risk_after)
-                deltas = (base.upper - upper_after) * graph.impact
-                top = [int(t) for t in np.argsort(-deltas)[:3] if deltas[t] > 1e-12]
-                drops = [(t, float(base.upper[t] - upper_after[t])) for t in top]
-                evaluated.append((reduction, key, entry, risk_after, drops))
-            evaluated.sort(key=lambda r: (-r[0], r[1]))
+
+            def evaluate() -> dict[str, Any]:
+                started = time.perf_counter()
+                # Which candidates to score first. A single backward pass gives ∂risk/∂p for
+                # every step, so each candidate gets a first-order estimate of the risk it
+                # removes — downstream effects included. The exact recomputation below then
+                # works down that list for as long as the time budget allows.
+                sensitivity = self._sensitivity(graph, base)
+                for entry in candidates.values():
+                    changes = {
+                        int(ex.gate_position[gate]): value
+                        for gate, value in graph.gate_changes(frozenset(entry["findings"]), entry["nodes"]).items()
+                        if ex.gate_position[gate] >= 0
+                    }
+                    entry["changes"] = changes
+                    if sensitivity is not None:
+                        entry["estimate"] = sum(
+                            float(sensitivity[position]) * (float(ex.p[position]) - value)
+                            for position, value in changes.items()
+                        )
+                    else:
+                        entry["estimate"] = entry["score"]
+                ordered = sorted(candidates.items(), key=lambda kv: (-kv[1]["estimate"], -kv[1]["score"], kv[0]))
+                scored = []
+                cut_short = False
+                for key, entry in ordered:
+                    if time.perf_counter() - started > time_budget_s:
+                        cut_short = True
+                        break
+                    p = ex.p.copy()
+                    for position, value in entry["changes"].items():
+                        p[position] = value
+                    risk_after, upper_after = self._upper_risk(graph, base, p)
+                    reduction = max(0.0, risk_before - risk_after)
+                    deltas = (base.upper - upper_after) * graph.impact
+                    top = [int(t) for t in np.argsort(-deltas)[:3] if deltas[t] > 1e-12]
+                    drops = [(t, float(base.upper[t] - upper_after[t])) for t in top]
+                    scored.append((reduction, key, entry, risk_after, drops))
+                scored.sort(key=lambda r: (-r[0], r[1]))
+                return {"evaluated": scored, "partial": cut_short, "budget": time_budget_s}
+
+            # A partial result is only recomputed for a caller willing to wait longer.
+            outcome = self._memoized(
+                graph, f"priorities:{by}", evaluate, lambda c: c["partial"] and time_budget_s > c["budget"]
+            )
+            evaluated, partial = outcome["evaluated"], outcome["partial"]
             items = []
             for reduction, key, entry, risk_after, top_targets in evaluated[: max(1, min(limit, 200))]:
                 sample = entry["sample"]
@@ -747,7 +815,13 @@ class AnalyticsService:
             }
 
     def choke_points(
-        self, tenant_id: str, scope: AccessScope, *, limit: int = 10, as_of: datetime | None = None
+        self,
+        tenant_id: str,
+        scope: AccessScope,
+        *,
+        limit: int = 10,
+        time_budget_s: float = 10.0,
+        as_of: datetime | None = None,
     ) -> dict[str, Any]:
         """States whose hardening removes the most risk — where one control protects many crown jewels."""
         graph = self.graph(tenant_id, as_of=as_of)
@@ -756,26 +830,46 @@ class AnalyticsService:
             base = self._baseline(graph)
             ex = graph.expand()
             risk_before = float(graph.impact @ base.upper)
-            on_paths: dict[int, int] = {}
-            ranked = sorted(
-                (t for t in graph.targets if math.isfinite(base.lower_cost[t])),
-                key=lambda t: -math.exp(-base.lower_cost[t]) * float(graph.impact[t]),
+
+            def evaluate() -> dict[str, Any]:
+                on_paths: dict[int, float] = {}
+                counts: dict[int, int] = {}
+                ranked = sorted(
+                    (t for t in graph.targets if math.isfinite(base.lower_cost[t])),
+                    key=lambda t: -math.exp(-base.lower_cost[t]) * float(graph.impact[t]),
+                )
+                for target in ranked[:200]:
+                    path = self._path_from_tree(base, target)
+                    if path is None:
+                        continue
+                    weight = path.probability * float(graph.impact[target])
+                    for node in path.nodes[1:-1]:
+                        on_paths[node] = on_paths.get(node, 0.0) + weight
+                        counts[node] = counts.get(node, 0) + 1
+                # Most promising first, so a cut-short evaluation still holds the important states.
+                order = sorted(on_paths, key=lambda node: (-on_paths[node], graph.ids[node]))
+                started = time.perf_counter()
+                scored: list[tuple[float, int, int]] = []
+                cut_short = False
+                for node in order:
+                    if time.perf_counter() - started > time_budget_s:
+                        cut_short = True
+                        break
+                    p = ex.p.copy()
+                    p[(ex.src == node) | (ex.dst == node)] = 0.0
+                    risk_after, _upper = self._upper_risk(graph, base, p)
+                    reduction = max(0.0, risk_before - risk_after - float(graph.impact[node] * base.upper[node]))
+                    scored.append((reduction, node, counts[node]))
+                scored.sort(key=lambda r: (-r[0], graph.ids[r[1]]))
+                return {"scored": scored, "candidates": len(order), "partial": cut_short, "budget": time_budget_s}
+
+            outcome = self._memoized(
+                graph, "choke_points", evaluate, lambda c: c["partial"] and time_budget_s > c["budget"]
             )
-            for target in ranked[:200]:
-                path = self._path_from_tree(base, target)
-                if path is None:
-                    continue
-                for node in path.nodes[1:-1]:
-                    on_paths[node] = on_paths.get(node, 0) + 1
             results = []
-            for node, paths_through in on_paths.items():
-                p = ex.p.copy()
-                p[(ex.src == node) | (ex.dst == node)] = 0.0
-                risk_after, _upper = self._upper_risk(graph, base, p)
-                reduction = max(0.0, risk_before - risk_after - float(graph.impact[node] * base.upper[node]))
-                steps_in = list(graph.in_steps()[node])
+            for reduction, node, paths_through in outcome["scored"][: max(1, min(limit, 100))]:
                 recommended: list[str] = []
-                for step in steps_in:
+                for step in graph.in_steps()[node]:
                     rule = self._rules[graph.step_rule[step]]
                     have = {c.control_type for c in graph.step_controls[step]}
                     for control in rule.recommended_controls or rule.mitigated_by:
@@ -793,11 +887,13 @@ class AnalyticsService:
                         "recommended_controls": recommended[:6],
                     }
                 )
-            results.sort(key=lambda r: (-r["risk_reduction"], r["id"]))
             return {
                 "graph": self._meta(graph),
                 "risk_before": _round(risk_before),
-                "items": results[: max(1, min(limit, 100))],
+                "candidates": outcome["candidates"],
+                "evaluated": len(outcome["scored"]),
+                "partial": outcome["partial"],
+                "items": results,
                 "note": "risk removed downstream if the attacker could never hold this state (its own impact excluded)",
             }
 

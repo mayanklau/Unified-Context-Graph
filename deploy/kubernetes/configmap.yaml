@@ -1,0 +1,18 @@
+# Non-secret settings. Every SECGRAPH_* variable in .env.example can be set here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: secgraph-config
+  labels:
+    app.kubernetes.io/name: security-graph
+data:
+  SECGRAPH_ENVIRONMENT: production
+  SECGRAPH_LOG_LEVEL: INFO
+  SECGRAPH_LOG_JSON: "true"
+  SECGRAPH_DEFAULT_TENANT: default
+  # /docs and /redoc load their assets from a CDN; off for air-gapped clusters. /openapi.json stays available.
+  SECGRAPH_DOCS_ENABLED: "false"
+  # Rate limits are per credential and per replica: with N replicas the effective ceiling is N times this.
+  SECGRAPH_RATE_LIMIT_PER_MINUTE: "600"
+  # Protective plane (AgentPEP / LLM Firewall / Thoth); leave unset to run without it.
+  # SECGRAPH_GUARDRAIL_WEBHOOK_URL: https://agentpep.security.svc/v1/check

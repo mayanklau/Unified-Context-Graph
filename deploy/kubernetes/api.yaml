@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secgraph-api
+  labels: &labels
+    app.kubernetes.io/name: security-graph
+    app.kubernetes.io/component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels: *labels
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: *labels
+      initContainers:
+        # Do not serve until the migration Job has brought the schema up to date.
+        - name: wait-for-schema
+          image: security-graph:1.0.0
+          command: ["sh", "-c", "until secgraph migrate status >/dev/null 2>&1; do echo 'waiting for migrations'; sleep 3; done"]
+          envFrom: &env
+            - configMapRef:
+                name: secgraph-config
+            - secretRef:
+                name: secgraph-secrets
+          securityContext: &container-security
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 256Mi}
+          volumeMounts: &mounts
+            - {name: tmp, mountPath: /tmp}
+      containers:
+        - name: api
+          image: security-graph:1.0.0
+          # Trust X-Forwarded-* from the ingress controller; the Service is ClusterIP only.
+          args: ["serve", "--forwarded-allow-ips", "*"]
+          ports:
+            - {name: http, containerPort: 8080}
+          envFrom: *env
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 15
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          securityContext: *container-security
+          resources:
+            # Attack-path analytics hold the projected graph in memory: size for your estate
+            # (docs/OPERATIONS.md has measured numbers).
+            requests: {cpu: 500m, memory: 1Gi}
+            limits: {memory: 4Gi}
+          volumeMounts: *mounts
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secgraph-api
+  labels:
+    app.kubernetes.io/name: security-graph
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: security-graph
+    app.kubernetes.io/component: api
+  ports:
+    - {name: http, port: 80, targetPort: http}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: secgraph-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: security-graph
+      app.kubernetes.io/component: api

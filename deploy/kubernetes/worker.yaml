@@ -1,0 +1,56 @@
+# Delivers webhooks and runs maintenance (expiry, retention). More than one replica is safe:
+# webhook rows are locked while delivered, and maintenance is idempotent.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secgraph-worker
+  labels: &labels
+    app.kubernetes.io/name: security-graph
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: *labels
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: wait-for-schema
+          image: security-graph:1.0.0
+          command: ["sh", "-c", "until secgraph migrate status >/dev/null 2>&1; do echo 'waiting for migrations'; sleep 3; done"]
+          envFrom: &env
+            - configMapRef:
+                name: secgraph-config
+            - secretRef:
+                name: secgraph-secrets
+          securityContext: &container-security
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 256Mi}
+          volumeMounts: &mounts
+            - {name: tmp, mountPath: /tmp}
+      containers:
+        - name: worker
+          image: security-graph:1.0.0
+          args: ["worker"]
+          envFrom: *env
+          securityContext: *container-security
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 1Gi}
+          volumeMounts: *mounts
+      volumes:
+        - name: tmp
+          emptyDir: {}

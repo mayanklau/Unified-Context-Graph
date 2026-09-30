@@ -1,0 +1,94 @@
+# A single-pod PostgreSQL for trying the manifests out. NOT for production: no replication,
+# no backups. Production should use the bank's managed PostgreSQL or an operator
+# (CloudNativePG, Zalando, Crunchy) and only needs SECGRAPH_DATABASE_URL.
+#
+#   kubectl -n security-graph create secret generic secgraph-postgres-dev --from-literal=password="$(openssl rand -hex 24)"
+#   kubectl -n security-graph apply -f deploy/kubernetes/postgres-dev.yaml
+#   # SECGRAPH_DATABASE_URL=postgresql+psycopg://secgraph:<password>@secgraph-postgres:5432/secgraph
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: secgraph-postgres
+  labels: &labels
+    app.kubernetes.io/name: security-graph
+    app.kubernetes.io/component: postgres-dev
+spec:
+  serviceName: secgraph-postgres
+  replicas: 1
+  selector:
+    matchLabels: *labels
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - {name: postgres, containerPort: 5432}
+          env:
+            - {name: POSTGRES_USER, value: secgraph}
+            - {name: POSTGRES_DB, value: secgraph}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: secgraph-postgres-dev, key: password}
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "secgraph", "-d", "secgraph"]
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {memory: 2Gi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secgraph-postgres
+spec:
+  selector:
+    app.kubernetes.io/name: security-graph
+    app.kubernetes.io/component: postgres-dev
+  ports:
+    - {name: postgres, port: 5432, targetPort: postgres}
+---
+# The default-deny policy in networkpolicy.yaml blocks the database too; let the application in.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: secgraph-postgres-dev
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: security-graph
+      app.kubernetes.io/component: postgres-dev
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: security-graph
+      ports:
+        - {protocol: TCP, port: 5432}

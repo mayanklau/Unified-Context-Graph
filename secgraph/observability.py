@@ -22,7 +22,7 @@ request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id
 tenant_var: contextvars.ContextVar[str] = contextvars.ContextVar("tenant", default="-")
 principal_var: contextvars.ContextVar[str] = contextvars.ContextVar("principal", default="-")
 
-_RESERVED = set(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"message", "asctime"}
+_RESERVED = set(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"message", "asctime", "color_message"}
 
 
 class JsonFormatter(logging.Formatter):

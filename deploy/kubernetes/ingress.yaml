@@ -1,0 +1,24 @@
+# Example for ingress-nginx with a certificate from your internal CA in the secret secgraph-tls.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: secgraph
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 64m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["security-graph.bank.example"]
+      secretName: secgraph-tls
+  rules:
+    - host: security-graph.bank.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: secgraph-api
+                port:
+                  name: http

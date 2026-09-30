@@ -1,0 +1,36 @@
+# Only the ingress controller (and Prometheus) may reach the API; nothing reaches the worker.
+# Adjust the namespace selectors to your cluster. Egress is left open here because the
+# database, the guardrail and webhook targets differ per installation — restrict it to
+# those destinations once they are known.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: secgraph-default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: secgraph-api-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: security-graph
+      app.kubernetes.io/component: api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # In-cluster callers (HAL-O, Remediation OS, agents): label their namespaces.
+        - namespaceSelector:
+            matchLabels:
+              security-graph/client: "true"
+      ports:
+        - {protocol: TCP, port: 8080}

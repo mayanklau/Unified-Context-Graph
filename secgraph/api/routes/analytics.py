@@ -70,9 +70,15 @@ def remediation_priorities(
 
 @router.get("/choke-points", summary="Where one control protects the most crown jewels")
 def choke_points(
-    ctx: Ctx, principal: Analyst, as_of: AsOf, limit: Annotated[int, Query(ge=1, le=100)] = 10
+    ctx: Ctx,
+    principal: Analyst,
+    as_of: AsOf,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    time_budget_s: Annotated[float, Query(gt=0, le=60)] = 10.0,
 ) -> dict[str, Any]:
-    return ctx.analytics.choke_points(principal.tenant_id, principal.scope, limit=limit, as_of=as_of)
+    return ctx.analytics.choke_points(
+        principal.tenant_id, principal.scope, limit=limit, time_budget_s=time_budget_s, as_of=as_of
+    )
 
 
 @router.get("/detection-race", summary="Does the attacker reach a crown jewel before being detected?")
