@@ -1,1 +1,49 @@
-<!doctype html><title>Security Graph</title>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Security Graph</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+</head>
+<body>
+  <div id="login" class="login" hidden>
+    <form id="login-form" class="login-card" autocomplete="on">
+      <div class="brand"><img src="/assets/icon.svg" alt="" width="28" height="28"><span>Security Graph</span></div>
+      <p class="muted">Sign in with your account, or paste an API key.</p>
+      <div class="segmented" role="tablist">
+        <button type="button" class="active" data-mode="password" role="tab">Password</button>
+        <button type="button" data-mode="key" role="tab">API key</button>
+      </div>
+      <div data-pane="password">
+        <label>Username<input name="username" autocomplete="username" spellcheck="false"></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password"></label>
+      </div>
+      <div data-pane="key" hidden>
+        <label>API key<input name="apikey" type="password" autocomplete="off" spellcheck="false" placeholder="sg_…"></label>
+      </div>
+      <p id="login-error" class="error" role="alert" hidden></p>
+      <button class="button primary" type="submit">Sign in</button>
+    </form>
+  </div>
+
+  <div id="shell" class="shell" hidden>
+    <aside class="sidebar">
+      <div class="brand"><img src="/assets/icon.svg" alt="" width="24" height="24"><span>Security Graph</span></div>
+      <nav id="nav" aria-label="Sections"></nav>
+      <div class="sidebar-foot">
+        <div id="whoami" class="whoami"></div>
+        <div class="row">
+          <button id="theme" class="button ghost small" type="button" title="Switch between light and dark">Theme</button>
+          <button id="logout" class="button ghost small" type="button">Sign out</button>
+        </div>
+      </div>
+    </aside>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <script type="module" src="/assets/app.js"></script>
+</body>
+</html>
