@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     log_json: bool = True
     docs_enabled: bool = True  # OpenAPI UI at /docs (uses local assets only when vendored; see OPERATIONS.md)
     cors_origins: str = ""  # comma-separated; empty = same-origin only
+    metrics_token: str | None = None  # when set, /metrics requires "Authorization: Bearer <token>"
 
     # --- persistence
     database_url: str = "sqlite:///./secgraph.db"
@@ -38,6 +39,7 @@ class Settings(BaseSettings):
     # --- ontology
     ontology_file: str | None = None  # path to override the packaged core ontology
     source_priority: str = ""  # comma-separated source names, highest priority first
+    mappings_dir: str | None = None  # extra source mappings (*.yaml); may override packaged ones by name
 
     # --- tenancy
     default_tenant: str = "default"

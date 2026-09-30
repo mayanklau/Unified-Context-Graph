@@ -59,6 +59,8 @@ log = get_logger(__name__)
 
 _MAX_QUARANTINE_REPORTED = 100
 _FUTURE_TOLERANCE = timedelta(hours=24)
+# Alias kinds with this prefix record a steward's decision about an ambiguous weak identifier.
+PIN_PREFIX = "pin."
 _EXPLICIT_NAME_RANK = -1
 _UNNAMED_RANK = 999
 
@@ -207,7 +209,13 @@ class IngestService:
         request: IngestRequest,
         *,
         mapping: str | None = None,
+        source_errors: Sequence[tuple[int, Any, str]] = (),
     ) -> IngestResult:
+        """Ingest one canonical batch.
+
+        ``source_errors`` are source records a mapping could not translate; they are
+        quarantined under this batch so that they, too, are never silently lost.
+        """
         total = len(request.nodes) + len(request.edges)
         if total > self.settings.ingest_max_records:
             raise LimitExceeded(
@@ -253,6 +261,8 @@ class IngestService:
                     result.rejections.append(Rejection("edge", index, _as_record(raw), exc.message))
             result.nodes.quarantined = sum(1 for r in result.rejections if r.kind == "node")
             result.edges.quarantined = sum(1 for r in result.rejections if r.kind == "edge")
+            for index, record, reason in source_errors:
+                result.rejections.append(Rejection("source_record", index, _as_record(record), reason))
             if result.rejections:
                 early = list(result.rejections)
                 self.db.run(lambda s: self._quarantine(s, tenant_id, batch_id, source, early))
@@ -463,6 +473,11 @@ class IngestService:
             if len(usable) == 1:
                 return state.nodes[usable[0]], conflicts
             if len(usable) > 1:
+                # A steward may have settled this ambiguity before ("records known only by this
+                # host name mean that node"): the decision is stored as a pin and honoured here.
+                pinned = [n for n in self._pinned(state, p, type_def) if compatible(n)]
+                if pinned:
+                    return state.nodes[pinned[0]], conflicts
                 # Several entities share this weak identifier. If exactly one of them is itself
                 # known only by weak identifiers, it is the placeholder created the first time
                 # this ambiguity was seen — reuse it rather than minting a duplicate every run.
@@ -471,6 +486,18 @@ class IngestService:
                     return state.nodes[placeholders[0]], conflicts
                 conflicts.append(("ambiguous_weak_match", usable, {"identifiers": identifiers}))
         return None, conflicts
+
+    @staticmethod
+    def _pinned(state: _ChunkState, p: PreparedNode, type_def: NodeTypeDef) -> list[str]:
+        found: list[str] = []
+        for kind, value in p.idents:
+            definition = type_def.identifier(kind)
+            if definition is None or not definition.weak or not definition.match:
+                continue
+            for owner in state.alias_owner.get((p.type, PIN_PREFIX + kind, value), []):
+                if owner in state.nodes and owner not in found:
+                    found.append(owner)
+        return found
 
     @staticmethod
     def _weak_only(state: _ChunkState, node_id: str, type_def: NodeTypeDef) -> bool:
@@ -536,6 +563,7 @@ class IngestService:
                     reason=reason,
                     node_ids=ids,
                     detail=detail,
+                    occurrences=1,
                     first_seen=now,
                     last_seen=now,
                 )

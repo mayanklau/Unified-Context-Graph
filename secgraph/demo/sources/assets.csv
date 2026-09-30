@@ -1,0 +1,17 @@
+asset_id,fqdn,ip,mac,serial,asset_type,os,os_version,environment,criticality,crown_jewel,internet_exposed,owner,location,status,segment,zone,business_service
+CI-1001,web-portal-01.dmz.meridian.example,203.0.113.10;10.10.1.10,00:50:56:aa:10:01,VMW-7F3A1001,server,Ubuntu,22.04,production,4,false,true,Digital Channels,BLR-DC1,active,dmz,dmz,Internet Banking
+CI-1002,api-gw-01.dmz.meridian.example,203.0.113.11;10.10.1.11,00:50:56:aa:10:02,VMW-7F3A1002,server,Red Hat Enterprise Linux,8.9,production,4,false,true,Payments Engineering,BLR-DC1,active,dmz,dmz,UPI Payments
+CI-1003,vpn-gw-01.dmz.meridian.example,203.0.113.12,00:1b:17:aa:10:03,PAN-0155120003,network_device,PAN-OS,10.2.7,production,3,false,true,Network Operations,BLR-DC1,active,dmz,dmz,
+CI-1004,wiki-01.dmz.meridian.example,203.0.113.14;10.10.1.14,00:50:56:aa:10:04,VMW-7F3A1004,server,Ubuntu,20.04,production,2,false,true,Security Operations,BLR-DC1,active,dmz,dmz,Security Operations
+CI-2001,app-ib-01.core.meridian.example,10.20.1.21,00:50:56:aa:20:01,VMW-7F3A2001,server,Red Hat Enterprise Linux,8.9,production,4,false,false,Digital Channels,BLR-DC1,active,internal,internal,Internet Banking
+CI-2002,app-upi-01.core.meridian.example,10.20.1.22,00:50:56:aa:20:02,VMW-7F3A2002,server,Red Hat Enterprise Linux,8.9,production,5,false,false,Payments Engineering,BLR-DC1,active,internal,internal,UPI Payments
+CI-2003,ad-dc-01.core.meridian.example,10.20.0.5,00:50:56:aa:20:03,VMW-7F3A2003,server,Windows Server,2016,production,5,true,false,Identity Services,BLR-DC1,active,internal,internal,
+CI-2004,hr-ws-114.core.meridian.example,10.20.40.114,8c:16:45:aa:20:04,PF2X114,workstation,Windows,10 22H2,production,2,false,false,Human Resources,BLR-HQ,active,internal,internal,
+CI-2005,fin-ws-021.core.meridian.example,10.20.41.21,8c:16:45:aa:20:05,PF2X021,workstation,Windows,11 23H2,production,2,false,false,Finance,BLR-HQ,active,internal,internal,
+CI-2006,dev-build-01.dev.meridian.example,10.30.5.6,00:50:56:aa:20:06,VMW-7F3A2006,server,Ubuntu,22.04,development,2,false,false,Platform Engineering,BLR-DC1,active,internal,internal,
+CI-3001,cbs-app-01.restricted.meridian.example,10.50.1.31,00:50:56:aa:30:01,VMW-7F3A3001,server,Red Hat Enterprise Linux,7.9,production,5,true,false,Core Banking,BLR-DC1,active,restricted,restricted,Core Banking
+CI-3002,cbs-db-01.restricted.meridian.example,10.50.1.32,00:50:56:aa:30:02,VMW-7F3A3002,database_server,Oracle Linux,8.8,production,5,true,false,Core Banking,BLR-DC1,active,restricted,restricted,Core Banking
+CI-3003,swift-gw-01.restricted.meridian.example,10.50.2.10,00:50:56:aa:30:03,VMW-7F3A3003,server,Windows Server,2019,production,5,true,false,Treasury Operations,BLR-DC1,active,restricted,restricted,SWIFT Messaging
+CI-3004,bkp-01.restricted.meridian.example,10.50.9.4,00:50:56:aa:30:04,VMW-7F3A3004,server,Red Hat Enterprise Linux,8.9,production,4,false,false,Infrastructure,BLR-DC2,active,restricted,restricted,
+CI-4001,jump-01.mgmt.meridian.example,10.90.0.10,00:50:56:aa:40:01,VMW-7F3A4001,server,Windows Server,2022,production,4,false,false,Infrastructure,BLR-DC1,active,management,management,
+CI-4002,soc-agent-host-01.mgmt.meridian.example,10.90.0.20,00:50:56:aa:40:02,VMW-7F3A4002,server,Ubuntu,22.04,production,3,false,false,Security Operations,BLR-DC1,active,management,management,Security Operations

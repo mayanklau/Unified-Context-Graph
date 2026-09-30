@@ -1,0 +1,49 @@
+# MITRE ATT&CK STIX 2.1 bundle (enterprise-attack.json): techniques, groups, and which group uses what.
+# STIX object ids are kept as identifiers so 'uses' relationships resolve through the identity spine.
+mapping:
+  name: attack_stix
+  description: MITRE ATT&CK techniques, threat groups and their relationships (STIX 2.1 bundle)
+  format: json
+  source: mitre-attack
+  records: "$.objects"
+emit:
+  - node:
+      type: Technique
+      when:
+        all:
+          - {eq: ["$.type", "attack-pattern"]}
+          - {ne: ["$.revoked", true]}
+          - {ne: ["$.x_mitre_deprecated", true]}
+          - {path: "$.external_references[?source_name=mitre-attack].external_id", transform: first}
+      identifiers:
+        attack_id: {path: "$.external_references[?source_name=mitre-attack].external_id", transform: first}
+        stix_id: "$.id"
+      properties:
+        name: "$.name"
+        tactics: "$.kill_chain_phases[*].phase_name"
+        platforms: "$.x_mitre_platforms"
+        description: "$.description"
+  - node:
+      type: ThreatActor
+      when:
+        all:
+          - {eq: ["$.type", "intrusion-set"]}
+          - {ne: ["$.revoked", true]}
+      identifiers:
+        actor_key: {path: "$.name", transform: lower}
+        stix_id: "$.id"
+      properties:
+        name: "$.name"
+        aliases: "$.aliases"
+        description: "$.description"
+  - edge:
+      type: USES
+      when:
+        all:
+          - {eq: ["$.type", "relationship"]}
+          - {eq: ["$.relationship_type", "uses"]}
+          - {startswith: ["$.source_ref", "intrusion-set--"]}
+          - {startswith: ["$.target_ref", "attack-pattern--"]}
+          - {ne: ["$.revoked", true]}
+      source: {type: ThreatActor, identifiers: {stix_id: "$.source_ref"}}
+      target: {type: Technique, identifiers: {stix_id: "$.target_ref"}}

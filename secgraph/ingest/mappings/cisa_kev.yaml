@@ -1,0 +1,19 @@
+# CISA Known Exploited Vulnerabilities catalogue (known_exploited_vulnerabilities.json).
+# The same shape works for a CERT-In or internal known-exploited list.
+mapping:
+  name: cisa_kev
+  description: Known-exploited vulnerability catalogue
+  format: json
+  source: kev
+  records: "$.vulnerabilities"
+emit:
+  - node:
+      type: Vulnerability
+      identifiers:
+        cve: "$.cveID"
+      properties:
+        title: "$.vulnerabilityName"
+        kev: {literal: true}
+        kev_date_added: "$.dateAdded"
+        ransomware_use: {path: "$.knownRansomwareCampaignUse", transform: bool}
+        exploit_available: {literal: true}

@@ -101,6 +101,58 @@ def load(ingest_service: IngestService, tenant: str) -> Loader:
     return Loader(ingest_service, tenant)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _fast_password_hashing() -> Iterator[None]:
+    """600,000 PBKDF2 rounds are right for production and pointless in tests."""
+    import secgraph.governance.auth as auth
+
+    original = auth._PBKDF2_ITERATIONS
+    auth._PBKDF2_ITERATIONS = 1000
+    yield
+    auth._PBKDF2_ITERATIONS = original
+
+
+@pytest.fixture(scope="session")
+def ctx(db: Database, settings: Settings):
+    from secgraph.context import build_context
+
+    return build_context(settings, db=db)
+
+
+@pytest.fixture(scope="session")
+def client(ctx) -> Iterator[object]:
+    from fastapi.testclient import TestClient
+
+    from secgraph.api.app import create_app
+
+    with TestClient(create_app(context=ctx)) as test_client:
+        yield test_client
+
+
+class Credentials:
+    """Mint API keys with given roles for the test's tenant."""
+
+    def __init__(self, ctx, tenant: str):
+        self.ctx = ctx
+        self.tenant = tenant
+        self._cache: dict[tuple, dict[str, str]] = {}
+
+    def __call__(self, *roles: str, node_types: list[str] | None = None, kind: str = "service") -> dict[str, str]:
+        key = (roles, tuple(node_types or ()), kind)
+        if key not in self._cache:
+            created = self.ctx.auth.create_api_key(
+                self.tenant, "user:test", name=f"test {' '.join(roles)}", roles=list(roles), kind=kind,
+                node_types=node_types, known_node_types=set(self.ctx.ontology.node_types),
+            )
+            self._cache[key] = {"X-API-Key": created["api_key"]}
+        return self._cache[key]
+
+
+@pytest.fixture()
+def auth(ctx, tenant: str) -> Credentials:
+    return Credentials(ctx, tenant)
+
+
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     if TEST_DB_URL.startswith("postgresql"):
         return

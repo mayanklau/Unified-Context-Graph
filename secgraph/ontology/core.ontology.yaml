@@ -197,6 +197,7 @@ node_types:
     description: A MITRE ATT&CK (or ATLAS) technique.
     identifiers:
       - {kind: attack_id, normalize: attack_id, exclusive: true}
+      - {kind: stix_id, normalize: lower, description: STIX object id — lets STIX relationships join}
     name_from: [name, attack_id]
     properties:
       name: {type: string, max_length: 256}
@@ -209,6 +210,7 @@ node_types:
     description: A tracked adversary group or campaign.
     identifiers:
       - {kind: actor_key, normalize: lower, exclusive: true}
+      - {kind: stix_id, normalize: lower, description: STIX object id — lets STIX relationships join}
     name_from: [name, actor_key]
     properties:
       name: {type: string, max_length: 256}

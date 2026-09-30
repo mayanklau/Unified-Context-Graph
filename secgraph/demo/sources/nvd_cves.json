@@ -1,0 +1,540 @@
+{
+ "resultsPerPage": 11,
+ "startIndex": 0,
+ "totalResults": 11,
+ "format": "NVD_CVE",
+ "version": "2.0",
+ "timestamp": "2026-09-29T06:00:00.000",
+ "vulnerabilities": [
+  {
+   "cve": {
+    "id": "CVE-2021-44228",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2021-12-10T10:15:09.143",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "Apache Log4j2 JNDI features do not protect against attacker-controlled LDAP and other JNDI endpoints, allowing remote code execution when message lookup substitution is enabled."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 10.0,
+        "baseSeverity": "CRITICAL"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-20"
+       },
+       {
+        "lang": "en",
+        "value": "CWE-400"
+       },
+       {
+        "lang": "en",
+        "value": "CWE-502"
+       }
+      ]
+     }
+    ],
+    "cisaExploitAdd": "2021-12-10"
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2022-42889",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2022-10-13T13:15:10.113",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "Apache Commons Text performs variable interpolation with default lookups that can result in arbitrary code execution when untrusted input is interpolated."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 9.8,
+        "baseSeverity": "CRITICAL"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-94"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2022-22965",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2022-04-01T23:15:13.870",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A Spring MVC or Spring WebFlux application running on JDK 9+ may be vulnerable to remote code execution via data binding."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 9.8,
+        "baseSeverity": "CRITICAL"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-94"
+       }
+      ]
+     }
+    ],
+    "cisaExploitAdd": "2022-04-04"
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2024-3400",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2024-04-12T08:15:06.230",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A command injection vulnerability in the GlobalProtect feature of PAN-OS may enable an unauthenticated attacker to execute arbitrary code with root privileges on the firewall."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 10.0,
+        "baseSeverity": "CRITICAL"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-20"
+       },
+       {
+        "lang": "en",
+        "value": "CWE-77"
+       }
+      ]
+     }
+    ],
+    "cisaExploitAdd": "2024-04-12"
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2023-22515",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2023-10-04T14:15:10.440",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A broken access control vulnerability in Confluence Data Center and Server allows an external attacker to create unauthorized administrator accounts."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 9.8,
+        "baseSeverity": "CRITICAL"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-20"
+       }
+      ]
+     }
+    ],
+    "cisaExploitAdd": "2023-10-05"
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2024-6387",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2024-07-01T13:15:06.467",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A signal handler race condition in OpenSSH's server (sshd) may allow unauthenticated remote code execution."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 8.1,
+        "baseSeverity": "HIGH"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-362"
+       },
+       {
+        "lang": "en",
+        "value": "CWE-364"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2023-38408",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2023-07-20T03:15:10.170",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "The PKCS#11 feature in ssh-agent in OpenSSH has an insufficiently trustworthy search path, leading to remote code execution if an agent is forwarded to an attacker-controlled system."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 9.8,
+        "baseSeverity": "CRITICAL"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-428"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2021-3156",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2021-01-26T21:15:12.987",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "Sudo has an off-by-one error that can result in a heap-based buffer overflow, allowing privilege escalation to root."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "attackVector": "LOCAL",
+        "baseScore": 7.8,
+        "baseSeverity": "HIGH"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-193"
+       }
+      ]
+     }
+    ],
+    "cisaExploitAdd": "2022-04-06"
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2020-1472",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2020-08-17T19:15:15.117",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "An elevation of privilege vulnerability exists when an attacker establishes a vulnerable Netlogon secure channel connection to a domain controller (Zerologon)."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 10.0,
+        "baseSeverity": "CRITICAL"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-330"
+       }
+      ]
+     }
+    ],
+    "cisaExploitAdd": "2021-11-03"
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2019-0708",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2019-05-16T19:29:00.427",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A remote code execution vulnerability exists in Remote Desktop Services when an unauthenticated attacker connects using RDP and sends specially crafted requests (BlueKeep)."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 9.8,
+        "baseSeverity": "CRITICAL"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-416"
+       }
+      ]
+     }
+    ],
+    "cisaExploitAdd": "2021-11-03"
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2023-34362",
+    "sourceIdentifier": "nvd@nist.gov",
+    "published": "2023-06-02T14:15:09.487",
+    "lastModified": "2026-09-20T00:00:00.000",
+    "vulnStatus": "Analyzed",
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A SQL injection vulnerability in the MOVEit Transfer web application could allow an unauthenticated attacker to gain access to its database."
+     },
+     {
+      "lang": "es",
+      "value": "(descripci\u00f3n omitida en la muestra)"
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "nvd@nist.gov",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "attackVector": "NETWORK",
+        "baseScore": 9.8,
+        "baseSeverity": "CRITICAL"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-89"
+       }
+      ]
+     }
+    ],
+    "cisaExploitAdd": "2023-06-02"
+   }
+  }
+ ]
+}

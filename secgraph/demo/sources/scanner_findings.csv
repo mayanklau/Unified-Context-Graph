@@ -1,0 +1,16 @@
+fqdn,cve,title,severity,status,port,protocol,first_detected,last_detected,due_date,scanner
+web-portal-01.dmz.meridian.example,CVE-2021-44228,Apache Log4j2 JNDI remote code execution,critical,open,8443,tcp,2026-08-02,2026-09-28,2026-08-16,vm-scanner
+web-portal-01.dmz.meridian.example,CVE-2022-42889,Apache Commons Text interpolation code execution,critical,open,8443,tcp,2026-08-02,2026-09-28,2026-09-01,vm-scanner
+api-gw-01.dmz.meridian.example,CVE-2022-22965,Spring Framework data-binding remote code execution,critical,open,443,tcp,2026-07-19,2026-09-28,2026-08-02,vm-scanner
+vpn-gw-01.dmz.meridian.example,CVE-2024-3400,PAN-OS GlobalProtect command injection,critical,accepted,443,tcp,2026-06-30,2026-09-28,2026-07-14,vm-scanner
+wiki-01.dmz.meridian.example,CVE-2023-22515,Confluence Data Center broken access control,critical,open,8090,tcp,2026-09-05,2026-09-28,2026-09-19,vm-scanner
+app-ib-01.core.meridian.example,CVE-2022-22965,Spring Framework data-binding remote code execution,critical,open,8080,tcp,2026-07-19,2026-09-28,2026-08-02,vm-scanner
+app-ib-01.core.meridian.example,CVE-2024-6387,OpenSSH server signal handler race condition,high,open,22,tcp,2026-07-19,2026-09-28,2026-08-18,vm-scanner
+app-upi-01.core.meridian.example,CVE-2024-6387,OpenSSH server signal handler race condition,high,in_progress,22,tcp,2026-07-19,2026-09-28,2026-08-18,vm-scanner
+cbs-app-01.restricted.meridian.example,CVE-2023-38408,OpenSSH ssh-agent remote code execution,critical,open,22,tcp,2026-08-11,2026-09-28,2026-08-25,vm-scanner
+cbs-db-01.restricted.meridian.example,CVE-2021-3156,sudo heap-based buffer overflow,high,open,,,2026-08-11,2026-09-28,2026-09-10,vm-scanner
+ad-dc-01.core.meridian.example,CVE-2020-1472,Netlogon elevation of privilege (Zerologon),critical,open,445,tcp,2026-09-12,2026-09-28,2026-09-19,vm-scanner
+hr-ws-114.core.meridian.example,CVE-2019-0708,Remote Desktop Services remote code execution (BlueKeep),critical,open,3389,tcp,2026-09-12,2026-09-28,2026-09-26,vm-scanner
+dev-build-01.dev.meridian.example,CVE-2021-44228,Apache Log4j2 JNDI remote code execution,critical,open,8080,tcp,2026-08-02,2026-09-28,2026-08-16,vm-scanner
+jump-01.mgmt.meridian.example,CVE-2024-6387,OpenSSH server signal handler race condition,high,fixed,22,tcp,2026-07-19,2026-08-30,2026-08-18,vm-scanner
+swift-gw-01.restricted.meridian.example,CVE-2023-34362,MOVEit Transfer SQL injection,critical,fixed,443,tcp,2026-06-02,2026-06-20,2026-06-16,vm-scanner

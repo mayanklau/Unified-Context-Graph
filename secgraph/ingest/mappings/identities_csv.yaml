@@ -1,0 +1,37 @@
+# Directory export. One row per account.
+# Columns: account, upn, sid, email, display_name, identity_type, privileged, mfa_enabled, status, department,
+#   member_of (semicolon-separated group account names)
+mapping:
+  name: identities_csv
+  description: Identity directory CSV (users, service accounts, groups and memberships)
+  format: csv
+  source: directory
+emit:
+  - node:
+      type: Identity
+      ref: identity
+      identifiers:
+        sid: "$.sid"
+        upn: "$.upn"
+        account: "$.account"
+        email: "$.email"
+      properties:
+        display_name: "$.display_name"
+        identity_type: "$.identity_type"
+        privileged: {path: "$.privileged", transform: bool}
+        mfa_enabled: {path: "$.mfa_enabled", transform: bool}
+        status: "$.status"
+        department: "$.department"
+  - foreach: {path: "$.member_of", transform: split_semicolon}
+    emit:
+      - node:
+          type: Identity
+          ref: group
+          identifiers:
+            account: "$"
+          properties:
+            identity_type: {literal: group}
+      - edge:
+          type: MEMBER_OF
+          source: {type: Identity, identifiers: {account: "$^.account", upn: "$^.upn", sid: "$^.sid"}}
+          target: {ref: group}

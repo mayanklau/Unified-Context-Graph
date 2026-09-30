@@ -1,0 +1,43 @@
+# CycloneDX JSON SBOM (1.4+).
+# Name the asset the SBOM was taken from with the 'asset_fqdn' or 'asset_id' parameter. Without either, the
+# SBOM's metadata.component.name is treated as the asset's host name.
+mapping:
+  name: cyclonedx
+  description: CycloneDX JSON software bill of materials — what runs on an asset
+  format: json
+  source: sbom
+  records: "$.components"
+  parameters:
+    asset_fqdn: FQDN of the asset the SBOM was taken from
+    asset_id: Inventory id of the asset the SBOM was taken from
+emit:
+  - node:
+      type: Software
+      ref: software
+      when: {any: ["$.purl", "$.cpe"]}
+      identifiers:
+        purl: "$.purl"
+        cpe: "$.cpe"
+      properties:
+        name: "$.name"
+        version: "$.version"
+        vendor: {coalesce: ["$.publisher", "$.supplier.name", "$.group"]}
+        ecosystem: "$.type"
+        license: {path: "$.licenses[*].license.id", transform: first}
+  - edge:
+      type: RUNS
+      when: {any: ["@asset_fqdn", "@asset_id"]}
+      source:
+        type: Asset
+        identifiers:
+          fqdn: "@asset_fqdn"
+          asset_id: "@asset_id"
+      target: {ref: software}
+  - edge:
+      type: RUNS
+      when: {not: {any: ["@asset_fqdn", "@asset_id"]}}
+      source:
+        type: Asset
+        identifiers:
+          hostname: "$$.metadata.component.name"
+      target: {ref: software}

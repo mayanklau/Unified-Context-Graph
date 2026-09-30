@@ -1,0 +1,2144 @@
+{
+ "source": "estate-model",
+ "nodes": [
+  {
+   "type": "Identity",
+   "identifiers": {
+    "account": "corp\\domain admins"
+   },
+   "properties": {
+    "display_name": "Domain Admins",
+    "identity_type": "group",
+    "privileged": true
+   }
+  },
+  {
+   "type": "Identity",
+   "identifiers": {
+    "account": "corp\\cbs operators"
+   },
+   "properties": {
+    "display_name": "CBS Operators",
+    "identity_type": "group",
+    "privileged": true
+   }
+  },
+  {
+   "type": "Identity",
+   "identifiers": {
+    "account": "corp\\backup operators"
+   },
+   "properties": {
+    "display_name": "Backup Operators",
+    "identity_type": "group"
+   }
+  },
+  {
+   "type": "BusinessService",
+   "identifiers": {
+    "service_key": "internet banking"
+   },
+   "properties": {
+    "name": "Internet Banking",
+    "criticality": 4,
+    "owner": "Digital Channels",
+    "rto_hours": 4,
+    "regulatory_tags": [
+     "RBI",
+     "DPDPA"
+    ],
+    "description": "Retail and corporate internet banking portal."
+   }
+  },
+  {
+   "type": "BusinessService",
+   "identifiers": {
+    "service_key": "upi payments"
+   },
+   "properties": {
+    "name": "UPI Payments",
+    "criticality": 5,
+    "owner": "Payments Engineering",
+    "rto_hours": 1,
+    "regulatory_tags": [
+     "RBI",
+     "NPCI"
+    ],
+    "description": "UPI switch and payment APIs."
+   }
+  },
+  {
+   "type": "BusinessService",
+   "identifiers": {
+    "service_key": "core banking"
+   },
+   "properties": {
+    "name": "Core Banking",
+    "criticality": 5,
+    "owner": "Core Banking",
+    "rto_hours": 2,
+    "regulatory_tags": [
+     "RBI",
+     "DPDPA",
+     "CERT-In"
+    ],
+    "description": "Core banking system of record."
+   }
+  },
+  {
+   "type": "BusinessService",
+   "identifiers": {
+    "service_key": "swift messaging"
+   },
+   "properties": {
+    "name": "SWIFT Messaging",
+    "criticality": 5,
+    "owner": "Treasury Operations",
+    "rto_hours": 2,
+    "regulatory_tags": [
+     "RBI",
+     "SWIFT-CSP"
+    ],
+    "description": "Cross-border payment messaging."
+   }
+  },
+  {
+   "type": "BusinessService",
+   "identifiers": {
+    "service_key": "security operations"
+   },
+   "properties": {
+    "name": "Security Operations",
+    "criticality": 3,
+    "owner": "Security Operations",
+    "rto_hours": 8,
+    "regulatory_tags": [
+     "CERT-In"
+    ],
+    "description": "SOC tooling, including the agentic triage workflow."
+   }
+  },
+  {
+   "type": "DataStore",
+   "identifiers": {
+    "datastore_key": "cbs-customers"
+   },
+   "properties": {
+    "name": "Customer master (CBS)",
+    "store_type": "database",
+    "classification": "restricted",
+    "contains_pii": true,
+    "pii_categories": [
+     "identity",
+     "financial",
+     "contact"
+    ],
+    "record_count": 4200000,
+    "criticality": 5,
+    "crown_jewel": true,
+    "owner": "Core Banking"
+   }
+  },
+  {
+   "type": "DataStore",
+   "identifiers": {
+    "datastore_key": "upi-transactions"
+   },
+   "properties": {
+    "name": "UPI transaction ledger",
+    "store_type": "database",
+    "classification": "confidential",
+    "contains_pii": true,
+    "pii_categories": [
+     "financial"
+    ],
+    "record_count": 186000000,
+    "criticality": 5,
+    "owner": "Payments Engineering"
+   }
+  },
+  {
+   "type": "DataStore",
+   "identifiers": {
+    "datastore_key": "swift-messages"
+   },
+   "properties": {
+    "name": "SWIFT message store",
+    "store_type": "database",
+    "classification": "restricted",
+    "contains_pii": false,
+    "criticality": 5,
+    "owner": "Treasury Operations"
+   }
+  },
+  {
+   "type": "DataStore",
+   "identifiers": {
+    "datastore_key": "backup-vault"
+   },
+   "properties": {
+    "name": "Backup vault",
+    "store_type": "object_storage",
+    "classification": "restricted",
+    "contains_pii": true,
+    "criticality": 4,
+    "owner": "Infrastructure"
+   }
+  },
+  {
+   "type": "DataStore",
+   "identifiers": {
+    "datastore_key": "soc-runbooks"
+   },
+   "properties": {
+    "name": "SOC runbooks (wiki space)",
+    "store_type": "knowledge_base",
+    "classification": "internal",
+    "contains_pii": false,
+    "criticality": 2,
+    "owner": "Security Operations"
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "waf-edge"
+   },
+   "properties": {
+    "name": "Edge web application firewall",
+    "control_type": "waf",
+    "effectiveness": 0.6,
+    "status": "active",
+    "framework_refs": [
+     "RBI-CSF Annex 1 \u00a74",
+     "ISO27001 A.8.20"
+    ]
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "edr-fleet"
+   },
+   "properties": {
+    "name": "Endpoint detection and response",
+    "control_type": "edr",
+    "effectiveness": 0.5,
+    "status": "active",
+    "framework_refs": [
+     "CERT-In 2022 \u00a74",
+     "ISO27001 A.8.7"
+    ]
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "mfa-workforce"
+   },
+   "properties": {
+    "name": "Workforce multi-factor authentication",
+    "control_type": "mfa",
+    "effectiveness": 0.9,
+    "status": "active",
+    "framework_refs": [
+     "RBI-CSF Annex 1 \u00a78"
+    ]
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "pam-vault"
+   },
+   "properties": {
+    "name": "Privileged access vault",
+    "control_type": "pam",
+    "effectiveness": 0.7,
+    "status": "active",
+    "framework_refs": [
+     "RBI-CSF Annex 1 \u00a78",
+     "ISO27001 A.8.2"
+    ]
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "seg-restricted"
+   },
+   "properties": {
+    "name": "Restricted-zone segmentation firewall",
+    "control_type": "segmentation",
+    "effectiveness": 0.7,
+    "status": "active",
+    "framework_refs": [
+     "RBI-CSF Annex 1 \u00a74"
+    ]
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "vpatch-vpn-3400"
+   },
+   "properties": {
+    "name": "Virtual patch for GlobalProtect (threat signature)",
+    "control_type": "virtual_patching",
+    "effectiveness": 0.8,
+    "status": "active"
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "enc-cbs"
+   },
+   "properties": {
+    "name": "Database encryption at rest (TDE)",
+    "control_type": "encryption_at_rest",
+    "effectiveness": 0.7,
+    "status": "active",
+    "framework_refs": [
+     "DPDPA \u00a78(5)"
+    ]
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "siem-identity-detections"
+   },
+   "properties": {
+    "name": "SIEM detections for directory and database access",
+    "control_type": "siem_detection",
+    "effectiveness": 0.4,
+    "status": "active"
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "thoth"
+   },
+   "properties": {
+    "name": "Thoth semantic firewall",
+    "control_type": "semantic_firewall",
+    "effectiveness": 0.6,
+    "status": "active"
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "agentpep"
+   },
+   "properties": {
+    "name": "AgentPEP policy enforcement",
+    "control_type": "agent_policy_enforcement",
+    "effectiveness": 0.7,
+    "status": "active"
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "llm-firewall"
+   },
+   "properties": {
+    "name": "LLM firewall",
+    "control_type": "llm_firewall",
+    "effectiveness": 0.6,
+    "status": "degraded"
+   }
+  },
+  {
+   "type": "Control",
+   "identifiers": {
+    "control_key": "hitl-destructive-tools"
+   },
+   "properties": {
+    "name": "Human approval for destructive tools",
+    "control_type": "human_in_the_loop",
+    "effectiveness": 0.8,
+    "status": "active"
+   }
+  },
+  {
+   "type": "AIAgent",
+   "identifiers": {
+    "agent_key": "hal-o-triage"
+   },
+   "properties": {
+    "name": "HAL-O triage agent",
+    "purpose": "First-line alert triage and enrichment",
+    "framework": "agentic-soc-harness",
+    "autonomy_level": "supervised",
+    "status": "active",
+    "owner": "Security Operations",
+    "criticality": 3
+   }
+  },
+  {
+   "type": "AIAgent",
+   "identifiers": {
+    "agent_key": "ros-remediation"
+   },
+   "properties": {
+    "name": "Remediation OS patch agent",
+    "purpose": "Plans and executes approved remediation on servers",
+    "framework": "remediation-os",
+    "autonomy_level": "supervised",
+    "status": "active",
+    "owner": "Infrastructure",
+    "criticality": 4,
+    "crown_jewel": true
+   }
+  },
+  {
+   "type": "AIModel",
+   "identifiers": {
+    "model_key": "nemotron-soc-ft"
+   },
+   "properties": {
+    "name": "Nemotron (SOC fine-tune)",
+    "provider": "NVIDIA",
+    "version": "soc-ft-2026.09",
+    "deployment": "on_prem",
+    "sovereign": true,
+    "fine_tuned": true
+   }
+  },
+  {
+   "type": "Tool",
+   "identifiers": {
+    "tool_key": "query_siem"
+   },
+   "properties": {
+    "name": "query_siem",
+    "description": "Search SIEM events",
+    "protocol": "mcp",
+    "risk_tier": "read_only",
+    "side_effects": false
+   }
+  },
+  {
+   "type": "Tool",
+   "identifiers": {
+    "tool_key": "isolate_host"
+   },
+   "properties": {
+    "name": "isolate_host",
+    "description": "Network-isolate a host through EDR",
+    "protocol": "mcp",
+    "risk_tier": "high",
+    "side_effects": true
+   }
+  },
+  {
+   "type": "Tool",
+   "identifiers": {
+    "tool_key": "run_remediation_script"
+   },
+   "properties": {
+    "name": "run_remediation_script",
+    "description": "Run an approved remediation script on a server",
+    "protocol": "mcp",
+    "risk_tier": "critical",
+    "side_effects": true
+   }
+  },
+  {
+   "type": "Incident",
+   "identifiers": {
+    "incident_key": "INC-2026-0917"
+   },
+   "properties": {
+    "title": "Suspected exploitation of the internet banking portal",
+    "severity": "high",
+    "status": "open",
+    "opened_at": "2026-09-28T05:40:00Z",
+    "summary": "JNDI exploitation attempt against web-portal-01 followed by an outbound connection to the same external host."
+   }
+  },
+  {
+   "type": "Finding",
+   "identifiers": {
+    "finding_key": "vm-scanner:web-portal-01.dmz.meridian.example:CVE-2021-44228:8443"
+   },
+   "properties": {
+    "ticket_ref": "CHG-48211"
+   }
+  },
+  {
+   "type": "Finding",
+   "identifiers": {
+    "finding_key": "vm-scanner:vpn-gw-01.dmz.meridian.example:CVE-2024-3400:443"
+   },
+   "properties": {
+    "status": "risk_accepted",
+    "exception_until": "2026-12-31",
+    "ticket_ref": "RISK-2026-114",
+    "exception_reason": "Upgrade requires a change freeze exception; threat signature deployed as a compensating control."
+   }
+  }
+ ],
+ "edges": [
+  {
+   "type": "ROUTES_TO",
+   "source": {
+    "type": "NetworkSegment",
+    "identifiers": {
+     "segment_key": "dmz"
+    }
+   },
+   "target": {
+    "type": "NetworkSegment",
+    "identifiers": {
+     "segment_key": "internal"
+    }
+   },
+   "properties": {
+    "ports": "8080,8443,389",
+    "policy_ref": "FW-DMZ-INT-014"
+   }
+  },
+  {
+   "type": "ROUTES_TO",
+   "source": {
+    "type": "NetworkSegment",
+    "identifiers": {
+     "segment_key": "internal"
+    }
+   },
+   "target": {
+    "type": "NetworkSegment",
+    "identifiers": {
+     "segment_key": "restricted"
+    }
+   },
+   "properties": {
+    "ports": "1521,9443,22",
+    "policy_ref": "FW-INT-RES-007"
+   }
+  },
+  {
+   "type": "ROUTES_TO",
+   "source": {
+    "type": "NetworkSegment",
+    "identifiers": {
+     "segment_key": "management"
+    }
+   },
+   "target": {
+    "type": "NetworkSegment",
+    "identifiers": {
+     "segment_key": "internal"
+    }
+   },
+   "properties": {
+    "ports": "22,3389,5985",
+    "policy_ref": "FW-MGT-INT-002"
+   }
+  },
+  {
+   "type": "ROUTES_TO",
+   "source": {
+    "type": "NetworkSegment",
+    "identifiers": {
+     "segment_key": "management"
+    }
+   },
+   "target": {
+    "type": "NetworkSegment",
+    "identifiers": {
+     "segment_key": "restricted"
+    }
+   },
+   "properties": {
+    "ports": "22,3389",
+    "policy_ref": "FW-MGT-RES-003"
+   }
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "web-portal-01.dmz.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-ib-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 8080,
+    "protocol": "tcp",
+    "service": "http"
+   },
+   "key": "tcp/8080"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "api-gw-01.dmz.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-upi-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 8443,
+    "protocol": "tcp",
+    "service": "https"
+   },
+   "key": "tcp/8443"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-ib-01.core.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-app-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 9443,
+    "protocol": "tcp",
+    "service": "https"
+   },
+   "key": "tcp/9443"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-upi-01.core.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-app-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 9443,
+    "protocol": "tcp",
+    "service": "https"
+   },
+   "key": "tcp/9443"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-app-01.restricted.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-db-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 1521,
+    "protocol": "tcp",
+    "service": "oracle"
+   },
+   "key": "tcp/1521"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "jump-01.mgmt.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "ad-dc-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 3389,
+    "protocol": "tcp",
+    "service": "rdp"
+   },
+   "key": "tcp/3389"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "jump-01.mgmt.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-db-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 22,
+    "protocol": "tcp",
+    "service": "ssh"
+   },
+   "key": "tcp/22"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "hr-ws-114.core.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "ad-dc-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 445,
+    "protocol": "tcp",
+    "service": "smb"
+   },
+   "key": "tcp/445"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-ib-01.core.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "ad-dc-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 389,
+    "protocol": "tcp",
+    "service": "ldap"
+   },
+   "key": "tcp/389"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "dev-build-01.dev.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-ib-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 22,
+    "protocol": "tcp",
+    "service": "ssh"
+   },
+   "key": "tcp/22"
+  },
+  {
+   "type": "CONNECTS_TO",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "bkp-01.restricted.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-db-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "port": 10000,
+    "protocol": "tcp",
+    "service": "backup"
+   },
+   "key": "tcp/10000"
+  },
+  {
+   "type": "HAS_SESSION",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-ib-01.core.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-ib-app"
+    }
+   },
+   "properties": {
+    "session_type": "service"
+   }
+  },
+  {
+   "type": "HAS_SESSION",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-upi-01.core.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-upi"
+    }
+   },
+   "properties": {
+    "session_type": "service"
+   }
+  },
+  {
+   "type": "HAS_SESSION",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "jump-01.mgmt.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\asharma"
+    }
+   },
+   "properties": {
+    "session_type": "interactive"
+   }
+  },
+  {
+   "type": "HAS_SESSION",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "hr-ws-114.core.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\pnair"
+    }
+   },
+   "properties": {
+    "session_type": "interactive"
+   }
+  },
+  {
+   "type": "HAS_SESSION",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "fin-ws-021.core.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\rverma"
+    }
+   },
+   "properties": {
+    "session_type": "interactive"
+   }
+  },
+  {
+   "type": "HAS_SESSION",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "bkp-01.restricted.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-backup"
+    }
+   },
+   "properties": {
+    "session_type": "service"
+   }
+  },
+  {
+   "type": "HAS_SESSION",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-app-01.restricted.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\kiyer"
+    }
+   },
+   "properties": {
+    "session_type": "cached"
+   }
+  },
+  {
+   "type": "HAS_SESSION",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "soc-agent-host-01.mgmt.meridian.example"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-soc-agent"
+    }
+   },
+   "properties": {
+    "session_type": "token"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-ib-app"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-app-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "write",
+    "via": "api"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-upi"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-app-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "write",
+    "via": "api"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\cbs operators"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-app-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "admin",
+    "via": "ssh"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\cbs operators"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-db-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "admin",
+    "via": "db role"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\cbs operators"
+    }
+   },
+   "target": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "cbs-customers"
+    }
+   },
+   "properties": {
+    "privilege": "write",
+    "via": "db role"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\domain admins"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "ad-dc-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "admin",
+    "via": "rdp"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\domain admins"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "jump-01.mgmt.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "admin",
+    "via": "rdp"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\domain admins"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "swift-gw-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "admin",
+    "via": "rdp"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-backup"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-db-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "read",
+    "via": "backup agent"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-backup"
+    }
+   },
+   "target": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "backup-vault"
+    }
+   },
+   "properties": {
+    "privilege": "write",
+    "via": "backup agent"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\backup operators"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "bkp-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "admin",
+    "via": "ssh"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\asharma"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "jump-01.mgmt.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "admin",
+    "via": "rdp"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\rverma"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "swift-gw-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "privilege": "write",
+    "via": "operator console"
+   }
+  },
+  {
+   "type": "HAS_ACCESS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-soc-agent"
+    }
+   },
+   "target": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "isolate_host"
+    }
+   },
+   "properties": {
+    "privilege": "write",
+    "via": "mcp"
+   }
+  },
+  {
+   "type": "OWNS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\kiyer"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-db-01.restricted.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "OWNS",
+   "source": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\asharma"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "ad-dc-01.core.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "HOSTS",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-db-01.restricted.meridian.example"
+    }
+   },
+   "target": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "cbs-customers"
+    }
+   }
+  },
+  {
+   "type": "HOSTS",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-db-01.restricted.meridian.example"
+    }
+   },
+   "target": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "upi-transactions"
+    }
+   }
+  },
+  {
+   "type": "HOSTS",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "swift-gw-01.restricted.meridian.example"
+    }
+   },
+   "target": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "swift-messages"
+    }
+   }
+  },
+  {
+   "type": "HOSTS",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "bkp-01.restricted.meridian.example"
+    }
+   },
+   "target": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "backup-vault"
+    }
+   }
+  },
+  {
+   "type": "HOSTS",
+   "source": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "wiki-01.dmz.meridian.example"
+    }
+   },
+   "target": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "soc-runbooks"
+    }
+   }
+  },
+  {
+   "type": "SUPPORTS",
+   "source": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "cbs-customers"
+    }
+   },
+   "target": {
+    "type": "BusinessService",
+    "identifiers": {
+     "service_key": "core banking"
+    }
+   }
+  },
+  {
+   "type": "SUPPORTS",
+   "source": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "upi-transactions"
+    }
+   },
+   "target": {
+    "type": "BusinessService",
+    "identifiers": {
+     "service_key": "upi payments"
+    }
+   }
+  },
+  {
+   "type": "SUPPORTS",
+   "source": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "swift-messages"
+    }
+   },
+   "target": {
+    "type": "BusinessService",
+    "identifiers": {
+     "service_key": "swift messaging"
+    }
+   }
+  },
+  {
+   "type": "SUPPORTS",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   },
+   "target": {
+    "type": "BusinessService",
+    "identifiers": {
+     "service_key": "security operations"
+    }
+   }
+  },
+  {
+   "type": "DEPENDS_ON",
+   "source": {
+    "type": "BusinessService",
+    "identifiers": {
+     "service_key": "internet banking"
+    }
+   },
+   "target": {
+    "type": "BusinessService",
+    "identifiers": {
+     "service_key": "core banking"
+    }
+   }
+  },
+  {
+   "type": "DEPENDS_ON",
+   "source": {
+    "type": "BusinessService",
+    "identifiers": {
+     "service_key": "upi payments"
+    }
+   },
+   "target": {
+    "type": "BusinessService",
+    "identifiers": {
+     "service_key": "core banking"
+    }
+   }
+  },
+  {
+   "type": "DEPENDS_ON",
+   "source": {
+    "type": "BusinessService",
+    "identifiers": {
+     "service_key": "core banking"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "ad-dc-01.core.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "waf-edge"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "web-portal-01.dmz.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "waf-edge"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "api-gw-01.dmz.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "edr-fleet"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "hr-ws-114.core.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "edr-fleet"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "fin-ws-021.core.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "edr-fleet"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "jump-01.mgmt.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "edr-fleet"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-ib-01.core.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "edr-fleet"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "soc-agent-host-01.mgmt.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "edr-fleet"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "ad-dc-01.core.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "mfa-workforce"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\asharma"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "mfa-workforce"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\rverma"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "mfa-workforce"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\kiyer"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "pam-vault"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\domain admins"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "pam-vault"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\cbs operators"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "seg-restricted"
+    }
+   },
+   "target": {
+    "type": "NetworkSegment",
+    "identifiers": {
+     "segment_key": "restricted"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "enc-cbs"
+    }
+   },
+   "target": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "cbs-customers"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "siem-identity-detections"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "ad-dc-01.core.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "siem-identity-detections"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-db-01.restricted.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "MITIGATES",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "vpatch-vpn-3400"
+    }
+   },
+   "target": {
+    "type": "Finding",
+    "identifiers": {
+     "finding_key": "vm-scanner:vpn-gw-01.dmz.meridian.example:CVE-2024-3400:443"
+    }
+   }
+  },
+  {
+   "type": "MITIGATES",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "waf-edge"
+    }
+   },
+   "target": {
+    "type": "Technique",
+    "identifiers": {
+     "attack_id": "T1190"
+    }
+   }
+  },
+  {
+   "type": "RUNS_ON",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "soc-agent-host-01.mgmt.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "RUNS_ON",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "ros-remediation"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "soc-agent-host-01.mgmt.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "USES_MODEL",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   },
+   "target": {
+    "type": "AIModel",
+    "identifiers": {
+     "model_key": "nemotron-soc-ft"
+    }
+   }
+  },
+  {
+   "type": "USES_MODEL",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "ros-remediation"
+    }
+   },
+   "target": {
+    "type": "AIModel",
+    "identifiers": {
+     "model_key": "nemotron-soc-ft"
+    }
+   }
+  },
+  {
+   "type": "READS_FROM",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   },
+   "target": {
+    "type": "DataStore",
+    "identifiers": {
+     "datastore_key": "soc-runbooks"
+    }
+   }
+  },
+  {
+   "type": "ACTS_AS",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   },
+   "target": {
+    "type": "Identity",
+    "identifiers": {
+     "account": "corp\\svc-soc-agent"
+    }
+   }
+  },
+  {
+   "type": "CAN_INVOKE",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   },
+   "target": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "query_siem"
+    }
+   }
+  },
+  {
+   "type": "CAN_INVOKE",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   },
+   "target": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "isolate_host"
+    }
+   }
+  },
+  {
+   "type": "CAN_INVOKE",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "ros-remediation"
+    }
+   },
+   "target": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "run_remediation_script"
+    }
+   }
+  },
+  {
+   "type": "DELEGATES_TO",
+   "source": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   },
+   "target": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "ros-remediation"
+    }
+   }
+  },
+  {
+   "type": "TOOL_TARGETS",
+   "source": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "isolate_host"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "hr-ws-114.core.meridian.example"
+    }
+   },
+   "properties": {
+    "effect": "execute"
+   }
+  },
+  {
+   "type": "TOOL_TARGETS",
+   "source": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "isolate_host"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "fin-ws-021.core.meridian.example"
+    }
+   },
+   "properties": {
+    "effect": "execute"
+   }
+  },
+  {
+   "type": "TOOL_TARGETS",
+   "source": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "isolate_host"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-ib-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "effect": "execute"
+   }
+  },
+  {
+   "type": "TOOL_TARGETS",
+   "source": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "run_remediation_script"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-ib-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "effect": "execute"
+   }
+  },
+  {
+   "type": "TOOL_TARGETS",
+   "source": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "run_remediation_script"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "app-upi-01.core.meridian.example"
+    }
+   },
+   "properties": {
+    "effect": "execute"
+   }
+  },
+  {
+   "type": "TOOL_TARGETS",
+   "source": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "run_remediation_script"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "cbs-app-01.restricted.meridian.example"
+    }
+   },
+   "properties": {
+    "effect": "execute"
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "thoth"
+    }
+   },
+   "target": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "agentpep"
+    }
+   },
+   "target": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "agentpep"
+    }
+   },
+   "target": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "ros-remediation"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "llm-firewall"
+    }
+   },
+   "target": {
+    "type": "AIAgent",
+    "identifiers": {
+     "agent_key": "hal-o-triage"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "hitl-destructive-tools"
+    }
+   },
+   "target": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "run_remediation_script"
+    }
+   }
+  },
+  {
+   "type": "PROTECTS",
+   "source": {
+    "type": "Control",
+    "identifiers": {
+     "control_key": "hitl-destructive-tools"
+    }
+   },
+   "target": {
+    "type": "Tool",
+    "identifiers": {
+     "tool_key": "isolate_host"
+    }
+   }
+  },
+  {
+   "type": "AFFECTS",
+   "source": {
+    "type": "Vulnerability",
+    "identifiers": {
+     "cve": "CVE-2021-44228"
+    }
+   },
+   "target": {
+    "type": "Software",
+    "identifiers": {
+     "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"
+    }
+   },
+   "properties": {
+    "version_range": ">=2.0-beta9 <2.15.0"
+   }
+  },
+  {
+   "type": "AFFECTS",
+   "source": {
+    "type": "Vulnerability",
+    "identifiers": {
+     "cve": "CVE-2022-42889"
+    }
+   },
+   "target": {
+    "type": "Software",
+    "identifiers": {
+     "purl": "pkg:maven/org.apache.commons/commons-text@1.9"
+    }
+   },
+   "properties": {
+    "version_range": ">=1.5 <1.10.0"
+   }
+  },
+  {
+   "type": "EXPLOITS",
+   "source": {
+    "type": "ThreatActor",
+    "identifiers": {
+     "actor_key": "apt41"
+    }
+   },
+   "target": {
+    "type": "Vulnerability",
+    "identifiers": {
+     "cve": "CVE-2021-44228"
+    }
+   }
+  },
+  {
+   "type": "INVOLVES",
+   "source": {
+    "type": "Incident",
+    "identifiers": {
+     "incident_key": "INC-2026-0917"
+    }
+   },
+   "target": {
+    "type": "Asset",
+    "identifiers": {
+     "fqdn": "web-portal-01.dmz.meridian.example"
+    }
+   }
+  },
+  {
+   "type": "PART_OF",
+   "source": {
+    "type": "Alert",
+    "identifiers": {
+     "alert_key": "sovereign-siem:det-9001"
+    }
+   },
+   "target": {
+    "type": "Incident",
+    "identifiers": {
+     "incident_key": "INC-2026-0917"
+    }
+   }
+  },
+  {
+   "type": "PART_OF",
+   "source": {
+    "type": "Alert",
+    "identifiers": {
+     "alert_key": "sovereign-siem:det-9002"
+    }
+   },
+   "target": {
+    "type": "Incident",
+    "identifiers": {
+     "incident_key": "INC-2026-0917"
+    }
+   }
+  }
+ ]
+}

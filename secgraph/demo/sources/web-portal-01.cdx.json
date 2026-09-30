@@ -1,0 +1,94 @@
+{
+ "bomFormat": "CycloneDX",
+ "specVersion": "1.5",
+ "serialNumber": "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+ "version": 1,
+ "metadata": {
+  "timestamp": "2026-09-27T21:10:00Z",
+  "component": {
+   "type": "application",
+   "name": "web-portal-01",
+   "version": "4.12.0"
+  }
+ },
+ "components": [
+  {
+   "type": "library",
+   "bom-ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+   "group": "org.apache.logging.log4j",
+   "name": "log4j-core",
+   "version": "2.14.1",
+   "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+   "licenses": [
+    {
+     "license": {
+      "id": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "bom-ref": "pkg:maven/org.apache.commons/commons-text@1.9",
+   "group": "org.apache.commons",
+   "name": "commons-text",
+   "version": "1.9",
+   "purl": "pkg:maven/org.apache.commons/commons-text@1.9",
+   "licenses": [
+    {
+     "license": {
+      "id": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "bom-ref": "pkg:maven/org.springframework/spring-webmvc@5.3.31",
+   "group": "org.springframework",
+   "name": "spring-webmvc",
+   "version": "5.3.31",
+   "purl": "pkg:maven/org.springframework/spring-webmvc@5.3.31",
+   "licenses": [
+    {
+     "license": {
+      "id": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "library",
+   "bom-ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.3",
+   "group": "com.fasterxml.jackson.core",
+   "name": "jackson-databind",
+   "version": "2.15.3",
+   "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.3",
+   "licenses": [
+    {
+     "license": {
+      "id": "Apache-2.0"
+     }
+    }
+   ]
+  },
+  {
+   "type": "application",
+   "name": "nginx",
+   "version": "1.18.0",
+   "cpe": "cpe:2.3:a:f5:nginx:1.18.0:*:*:*:*:*:*:*",
+   "licenses": [
+    {
+     "license": {
+      "id": "BSD-2-Clause"
+     }
+    }
+   ]
+  },
+  {
+   "type": "file",
+   "name": "application.yml",
+   "version": ""
+  }
+ ]
+}

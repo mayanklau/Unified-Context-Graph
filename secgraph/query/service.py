@@ -143,6 +143,9 @@ class QueryService:
                 if ids:
                     break
             records = self._visible(reader.get_nodes(ids), scope)
+            identifiers = reader.identifiers_for(list(records))
+            for node_id, record in records.items():
+                record.identifiers = identifiers.get(node_id, {})
             viewer = Viewer(self.ontology, scope)
             return [viewer.node(r) for r in records.values()]
 

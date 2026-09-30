@@ -87,6 +87,7 @@ class Database:
                 session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
             yield session
         finally:
+            session.expunge_all()  # rows read here stay usable after the snapshot ends
             session.rollback()
             session.close()
 

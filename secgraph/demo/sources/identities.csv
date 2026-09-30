@@ -1,0 +1,9 @@
+account,upn,sid,email,display_name,identity_type,privileged,mfa_enabled,status,department,member_of
+corp\asharma,anita.sharma@meridian.example,S-1-5-21-1004336348-1177238915-682003330-1104,anita.sharma@meridian.example,Anita Sharma,human,true,true,active,Infrastructure,corp\domain admins
+corp\rverma,rohit.verma@meridian.example,S-1-5-21-1004336348-1177238915-682003330-1121,rohit.verma@meridian.example,Rohit Verma,human,false,true,active,Finance,
+corp\pnair,priya.nair@meridian.example,S-1-5-21-1004336348-1177238915-682003330-1137,priya.nair@meridian.example,Priya Nair,human,false,false,active,Human Resources,
+corp\kiyer,karthik.iyer@meridian.example,S-1-5-21-1004336348-1177238915-682003330-1150,karthik.iyer@meridian.example,Karthik Iyer,human,true,true,active,Core Banking,corp\cbs operators
+corp\svc-ib-app,,S-1-5-21-1004336348-1177238915-682003330-2201,,Internet Banking service account,service,false,false,active,Digital Channels,
+corp\svc-upi,,S-1-5-21-1004336348-1177238915-682003330-2202,,UPI switch service account,service,false,false,active,Payments Engineering,corp\cbs operators
+corp\svc-backup,,S-1-5-21-1004336348-1177238915-682003330-2203,,Backup service account,service,true,false,active,Infrastructure,corp\backup operators
+corp\svc-soc-agent,,S-1-5-21-1004336348-1177238915-682003330-2210,,SOC triage agent identity,agent,false,false,active,Security Operations,

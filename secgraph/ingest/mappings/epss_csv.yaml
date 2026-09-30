@@ -1,0 +1,14 @@
+# FIRST EPSS daily scores (epss_scores-YYYY-MM-DD.csv): a '#model_version…' comment, then cve,epss,percentile.
+mapping:
+  name: epss_csv
+  description: EPSS exploit-prediction scores
+  format: csv
+  source: epss
+emit:
+  - node:
+      type: Vulnerability
+      identifiers:
+        cve: "$.cve"
+      properties:
+        epss: {path: "$.epss", transform: float}
+        epss_percentile: {path: "$.percentile", transform: float}

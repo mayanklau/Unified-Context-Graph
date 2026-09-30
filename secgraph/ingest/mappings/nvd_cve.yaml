@@ -1,0 +1,42 @@
+# NVD CVE API 2.0 JSON (https://services.nvd.nist.gov/rest/json/cves/2.0, or the offline yearly feeds).
+mapping:
+  name: nvd_cve
+  description: NVD CVE records — scores, vectors, weaknesses
+  format: json
+  source: nvd
+  records: "$.vulnerabilities"
+emit:
+  - node:
+      type: Vulnerability
+      identifiers:
+        cve: "$.cve.id"
+      properties:
+        description: {path: "$.cve.descriptions[?lang=en].value", transform: first}
+        cvss_score:
+          coalesce:
+            - {path: "$.cve.metrics.cvssMetricV31[?type=Primary].cvssData.baseScore", transform: first}
+            - {path: "$.cve.metrics.cvssMetricV31[*].cvssData.baseScore", transform: first}
+            - {path: "$.cve.metrics.cvssMetricV40[*].cvssData.baseScore", transform: first}
+            - {path: "$.cve.metrics.cvssMetricV30[*].cvssData.baseScore", transform: first}
+            - {path: "$.cve.metrics.cvssMetricV2[*].cvssData.baseScore", transform: first}
+        cvss_vector:
+          coalesce:
+            - {path: "$.cve.metrics.cvssMetricV31[?type=Primary].cvssData.vectorString", transform: first}
+            - {path: "$.cve.metrics.cvssMetricV31[*].cvssData.vectorString", transform: first}
+            - {path: "$.cve.metrics.cvssMetricV40[*].cvssData.vectorString", transform: first}
+            - {path: "$.cve.metrics.cvssMetricV30[*].cvssData.vectorString", transform: first}
+            - {path: "$.cve.metrics.cvssMetricV2[*].cvssData.vectorString", transform: first}
+        attack_vector:
+          coalesce:
+            - {path: "$.cve.metrics.cvssMetricV31[*].cvssData.attackVector", transform: first,
+               map: {adjacent_network: adjacent}}
+            - {path: "$.cve.metrics.cvssMetricV40[*].cvssData.attackVector", transform: first,
+               map: {adjacent_network: adjacent}}
+            - {path: "$.cve.metrics.cvssMetricV30[*].cvssData.attackVector", transform: first,
+               map: {adjacent_network: adjacent}}
+            - {path: "$.cve.metrics.cvssMetricV2[*].cvssData.accessVector", transform: first,
+               map: {adjacent_network: adjacent}}
+        cwe: {path: "$.cve.weaknesses[*].description[*].value", transform: unique}
+        published: "$.cve.published"
+        kev: {path: "$.cve.cisaExploitAdd", map: {"*": true}}
+        kev_date_added: "$.cve.cisaExploitAdd"

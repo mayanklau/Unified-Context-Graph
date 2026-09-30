@@ -1,0 +1,126 @@
+{
+ "notes": [
+  {
+   "kind": "lesson",
+   "title": "Log4Shell on an internet-facing Java tier: block at the WAF first, patch second",
+   "body": "A WAF rule for JNDI lookup strings cut exploit attempts to zero within minutes and bought time for a tested upgrade to log4j-core 2.17.1. Patching first caused an outage on the last occasion because the portal pins the logging version. Verify with the scanner after the change window, then remove the rule only once the SBOM shows the fixed version.",
+   "entities": [
+    {
+     "type": "Asset",
+     "identifiers": {
+      "fqdn": "web-portal-01.dmz.meridian.example"
+     }
+    },
+    {
+     "type": "Vulnerability",
+     "identifiers": {
+      "cve": "CVE-2021-44228"
+     }
+    },
+    {
+     "type": "Technique",
+     "identifiers": {
+      "attack_id": "T1190"
+     }
+    }
+   ],
+   "tags": [
+    "log4shell",
+    "waf",
+    "patching"
+   ],
+   "confidence": 0.8,
+   "outcomes": [
+    "success",
+    "success",
+    "success",
+    "failure"
+   ]
+  },
+  {
+   "kind": "decision",
+   "title": "PAN-OS CVE-2024-3400 on vpn-gw-01 accepted until 2026-12-31 with a virtual patch",
+   "body": "Risk accepted by the CISO office (RISK-2026-114). The vendor threat signature is deployed as the compensating control. Re-assess if the signature is disabled or exploitation of a signature bypass is reported.",
+   "entities": [
+    {
+     "type": "Asset",
+     "identifiers": {
+      "fqdn": "vpn-gw-01.dmz.meridian.example"
+     }
+    },
+    {
+     "type": "Finding",
+     "identifiers": {
+      "finding_key": "vm-scanner:vpn-gw-01.dmz.meridian.example:CVE-2024-3400:443"
+     }
+    }
+   ],
+   "tags": [
+    "risk-acceptance",
+    "vpn"
+   ],
+   "confidence": 0.9,
+   "outcomes": []
+  },
+  {
+   "kind": "playbook",
+   "title": "Suspected DCSync from a non-domain-controller account",
+   "body": "1. Confirm the source host is not a domain controller or an approved sync service. 2. Disable the account and revoke its sessions. 3. Treat every credential in the domain as exposed: rotate krbtgt twice, 10 hours apart. 4. Hunt for the account's logons in the previous 14 days. Escalate to incident response immediately.",
+   "entities": [
+    {
+     "type": "Asset",
+     "identifiers": {
+      "fqdn": "ad-dc-01.core.meridian.example"
+     }
+    },
+    {
+     "type": "Technique",
+     "identifiers": {
+      "attack_id": "T1003.006"
+     }
+    }
+   ],
+   "tags": [
+    "dcsync",
+    "active-directory",
+    "credential-access"
+   ],
+   "confidence": 0.9,
+   "outcomes": [
+    "success",
+    "success"
+   ]
+  },
+  {
+   "kind": "observation",
+   "title": "svc-ib-app holds standing write access to the core banking application",
+   "body": "The internet banking service account can write to cbs-app-01 at any time; there is no just-in-time step. Any compromise of app-ib-01 therefore reaches core banking with no further exploit.",
+   "entities": [
+    {
+     "type": "Identity",
+     "identifiers": {
+      "account": "corp\\svc-ib-app"
+     }
+    },
+    {
+     "type": "Asset",
+     "identifiers": {
+      "fqdn": "app-ib-01.core.meridian.example"
+     }
+    },
+    {
+     "type": "Asset",
+     "identifiers": {
+      "fqdn": "cbs-app-01.restricted.meridian.example"
+     }
+    }
+   ],
+   "tags": [
+    "standing-access",
+    "service-account"
+   ],
+   "confidence": 0.7,
+   "outcomes": []
+  }
+ ]
+}

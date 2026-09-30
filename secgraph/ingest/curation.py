@@ -18,7 +18,7 @@ from secgraph.errors import Conflict, NotFound, ValidationFailed
 from secgraph.events.outbox import ChangeBuffer, prune_changes
 from secgraph.governance import audit
 from secgraph.ingest.canonical import IngestRequest
-from secgraph.ingest.service import IngestService, new_id
+from secgraph.ingest.service import PIN_PREFIX, IngestService, new_id
 from secgraph.observability import get_logger
 from secgraph.ontology.model import Ontology
 from secgraph.store.db import Database
@@ -81,7 +81,25 @@ class CurationService:
                 )
                 return {(kind, value) for kind, value in rows_}
 
-            shared = alias_pairs(survivor_id) & alias_pairs(duplicate_id)
+            type_def = self.ontology.node_types[survivor.type]
+            duplicate_aliases = alias_pairs(duplicate_id)
+            # A duplicate known only by weak identifiers is the placeholder of an ambiguity. Merging it is
+            # the steward's answer to "which entity does this name mean", so the answer is pinned.
+            weak_only = all(
+                (d := type_def.identifier(kind)) is None or d.weak
+                for kind, _value in duplicate_aliases
+                if not kind.startswith(PIN_PREFIX)
+            )
+            pins = (
+                [
+                    (kind, value)
+                    for kind, value in duplicate_aliases
+                    if (d := type_def.identifier(kind)) is not None and d.weak and d.match
+                ]
+                if weak_only
+                else []
+            )
+            shared = alias_pairs(survivor_id) & duplicate_aliases
             for kind, value in shared:  # only weak identifiers can be held by both
                 session.execute(
                     delete(NodeAlias).where(
@@ -97,6 +115,8 @@ class CurationService:
                 .values(node_id=survivor_id)
             )
             moved_aliases = int(getattr(moved, "rowcount", 0) or 0)
+            for kind, value in pins:
+                self._pin(session, tenant_id, survivor.type, kind, value, survivor_id)
 
             # -- relationships: close the duplicate's edges, re-open them on the survivor
             existing = {
@@ -202,13 +222,20 @@ class CurationService:
                 .where(MemoryLink.tenant_id == tenant_id, MemoryLink.node_id == duplicate_id)
                 .values(node_id=survivor_id)
             )
+            pinned = set(pins)
             for conflict in session.execute(
                 select(ResolutionConflict).where(
-                    ResolutionConflict.tenant_id == tenant_id, ResolutionConflict.status == "open"
+                    ResolutionConflict.tenant_id == tenant_id,
+                    ResolutionConflict.status == "open",
+                    ResolutionConflict.node_type == survivor.type,
                 )
             ).scalars():
                 ids = set(conflict.node_ids or [])
-                if duplicate_id in ids and (survivor_id in ids or len(ids) <= 2):
+                identifiers = (conflict.detail or {}).get("identifiers", {})
+                settled_by_pin = conflict.reason == "ambiguous_weak_match" and any(
+                    (kind, value) in pinned for kind, value in identifiers.items()
+                )
+                if settled_by_pin or (duplicate_id in ids and (survivor_id in ids or len(ids) <= 2)):
                     conflict.status = "resolved"
 
             changes.add(
@@ -233,6 +260,111 @@ class CurationService:
             return summary
 
         return self.db.run(_work)
+
+    @staticmethod
+    def _pin(session: Session, tenant_id: str, node_type: str, kind: str, value: str, node_id: str) -> None:
+        """Record that weak identifier ``kind=value`` means ``node_id`` (replacing any earlier decision)."""
+        session.execute(
+            delete(NodeAlias).where(
+                NodeAlias.tenant_id == tenant_id,
+                NodeAlias.node_type == node_type,
+                NodeAlias.kind == PIN_PREFIX + kind,
+                NodeAlias.value == value,
+            )
+        )
+        session.add(
+            NodeAlias(
+                tenant_id=tenant_id, node_type=node_type, kind=PIN_PREFIX + kind, value=value, node_id=node_id,
+                weak=False,
+            )
+        )
+        session.flush()
+
+    def resolve_conflict(self, tenant_id: str, principal: str, conflict_id: str, node_id: str) -> dict[str, Any]:
+        """Settle a conflict by naming the node the records belong to.
+
+        * ``ambiguous_weak_match`` — the weak identifier is pinned to ``node_id`` and any placeholder
+          created for it is merged in; future records resolve without asking again.
+        * ``multiple_strong_matches`` / ``exclusive_mismatch`` — the steward asserts the listed nodes are
+          one entity: the others are merged into ``node_id``.
+        """
+        with self.db.transaction() as session:
+            conflict = session.execute(
+                select(ResolutionConflict).where(
+                    ResolutionConflict.tenant_id == tenant_id, ResolutionConflict.id == conflict_id
+                )
+            ).scalar_one_or_none()
+            if conflict is None:
+                raise NotFound(f"conflict {conflict_id} does not exist")
+            if conflict.status != "open":
+                raise Conflict(f"conflict {conflict_id} is already {conflict.status}")
+            node = session.execute(
+                select(Node).where(Node.tenant_id == tenant_id, Node.id == node_id, Node.deleted_at.is_(None))
+            ).scalar_one_or_none()
+            if node is None or node.type != conflict.node_type:
+                raise NotFound(f"node {node_id} is not a current {conflict.node_type}")
+            reason = conflict.reason
+            candidates = [i for i in (conflict.node_ids or []) if i != node_id]
+            identifiers = dict((conflict.detail or {}).get("identifiers", {}))
+            node_type = conflict.node_type
+            type_def = self.ontology.node_types[node_type]
+            placeholders: list[str] = []
+            if reason == "ambiguous_weak_match":
+                weak = [
+                    (kind, value)
+                    for kind, value in identifiers.items()
+                    if (d := type_def.identifier(kind)) is not None and d.weak and d.match
+                ]
+                for kind, value in weak:
+                    owners = session.execute(
+                        select(NodeAlias.node_id).where(
+                            NodeAlias.tenant_id == tenant_id,
+                            NodeAlias.node_type == node_type,
+                            NodeAlias.kind == kind,
+                            NodeAlias.value == value,
+                        )
+                    ).scalars()
+                    for owner in owners:
+                        if owner == node_id or owner in placeholders:
+                            continue
+                        kinds = session.execute(
+                            select(NodeAlias.kind).where(NodeAlias.tenant_id == tenant_id, NodeAlias.node_id == owner)
+                        ).scalars()
+                        if all((d := type_def.identifier(k)) is None or d.weak for k in kinds):
+                            placeholders.append(owner)
+
+        merged: list[str] = []
+        if reason == "ambiguous_weak_match":
+            for placeholder in placeholders:
+                self.merge_nodes(tenant_id, principal, node_id, placeholder)
+                merged.append(placeholder)
+        else:
+            for other in candidates:
+                try:
+                    self.merge_nodes(tenant_id, principal, node_id, other)
+                    merged.append(other)
+                except NotFound:
+                    continue  # already merged or deleted since the conflict was recorded
+
+        def _finish(session: Session) -> None:
+            if reason == "ambiguous_weak_match":
+                for kind, value in identifiers.items():
+                    definition = type_def.identifier(kind)
+                    if definition is not None and definition.weak and definition.match:
+                        self._pin(session, tenant_id, node_type, kind, value, node_id)
+            row = session.execute(
+                select(ResolutionConflict).where(
+                    ResolutionConflict.tenant_id == tenant_id, ResolutionConflict.id == conflict_id
+                )
+            ).scalar_one()
+            row.status = "resolved"
+            audit.record(
+                session, tenant_id, actor=principal, action="conflict.resolve", target=f"conflict:{conflict_id}",
+                detail={"node_id": node_id, "merged": merged, "reason": reason},
+            )
+
+        self.db.run(_finish)
+        return {"status": "resolved", "node_id": node_id, "merged": merged}
 
     # ------------------------------------------------------------------ #
     # Conflicts and quarantine

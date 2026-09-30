@@ -1,0 +1,58 @@
+# Generic asset inventory (CMDB export). One row per asset.
+# Columns (all optional except one identifier): asset_id, fqdn, hostname, ip, mac, serial, cloud_id, name,
+#   asset_type, os, os_version, environment, criticality, crown_jewel, internet_exposed, owner, location, status,
+#   segment, zone, business_service
+mapping:
+  name: assets_csv
+  description: Asset inventory CSV (CMDB or discovery export)
+  format: csv
+  source: cmdb
+emit:
+  - node:
+      type: Asset
+      ref: asset
+      identifiers:
+        asset_id: "$.asset_id"
+        fqdn: "$.fqdn"
+        hostname: "$.hostname"
+        ip: {path: "$.ip", transform: split_semicolon}
+        mac: {path: "$.mac", transform: split_semicolon}
+        serial: "$.serial"
+        cloud_id: "$.cloud_id"
+      properties:
+        name: "$.name"
+        asset_type: "$.asset_type"
+        os: "$.os"
+        os_version: "$.os_version"
+        environment: "$.environment"
+        criticality: {path: "$.criticality", transform: int}
+        crown_jewel: {path: "$.crown_jewel", transform: bool}
+        internet_exposed: {path: "$.internet_exposed", transform: bool}
+        owner: "$.owner"
+        location: "$.location"
+        status: "$.status"
+  - node:
+      type: NetworkSegment
+      ref: segment
+      when: "$.segment"
+      identifiers:
+        segment_key: "$.segment"
+      properties:
+        name: "$.segment"
+        zone: "$.zone"
+  - edge:
+      type: IN_SEGMENT
+      source: {ref: asset}
+      target: {ref: segment}
+  - node:
+      type: BusinessService
+      ref: service
+      when: "$.business_service"
+      identifiers:
+        service_key: "$.business_service"
+      properties:
+        name: "$.business_service"
+  - edge:
+      type: SUPPORTS
+      source: {ref: asset}
+      target: {ref: service}

@@ -1,0 +1,54 @@
+# Generic vulnerability-scanner export. One row per (asset, vulnerability) occurrence.
+# Columns: finding_id (optional), fqdn, hostname, ip, asset_id, cve, title, severity, status, port, protocol,
+#   first_detected, last_detected, due_date, scanner
+# The finding key defaults to scanner:asset:cve:port so re-imports update the same finding.
+mapping:
+  name: vuln_findings_csv
+  description: Vulnerability scanner findings CSV
+  format: csv
+  source: scanner
+emit:
+  - node:
+      type: Asset
+      ref: asset
+      identifiers:
+        asset_id: "$.asset_id"
+        fqdn: "$.fqdn"
+        hostname: "$.hostname"
+        ip: "$.ip"
+  - node:
+      type: Finding
+      ref: finding
+      identifiers:
+        finding_key:
+          coalesce:
+            - "$.finding_id"
+            - concat:
+                - {coalesce: ["$.scanner", {literal: scanner}]}
+                - ":"
+                - {coalesce: ["$.asset_id", "$.fqdn", "$.hostname", "$.ip"]}
+                - ":"
+                - {coalesce: ["$.cve", "$.title"]}
+                - ":"
+                - {coalesce: ["$.port", {literal: "0"}]}
+      properties:
+        title: {coalesce: ["$.title", "$.cve"]}
+        severity: {path: "$.severity", map: {informational: info, none: info}}
+        status: {path: "$.status", default: open,
+                 map: {new: open, active: open, fixed: resolved, closed: resolved, remediated: resolved,
+                       accepted: risk_accepted, "false positive": false_positive, reopened: reopened}}
+        scanner: "$.scanner"
+        port: {path: "$.port", transform: int}
+        protocol: "$.protocol"
+        first_detected: "$.first_detected"
+        last_detected: "$.last_detected"
+        due_date: "$.due_date"
+  - edge:
+      type: HAS_FINDING
+      source: {ref: asset}
+      target: {ref: finding}
+  - edge:
+      type: INSTANCE_OF
+      when: "$.cve"
+      source: {ref: finding}
+      target: {type: Vulnerability, identifiers: {cve: "$.cve"}}

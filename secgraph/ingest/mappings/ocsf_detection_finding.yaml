@@ -1,0 +1,91 @@
+# OCSF Detection Finding (class_uid 2004): alerts from the SIEM, EDR or NDR.
+mapping:
+  name: ocsf_detection_finding
+  description: OCSF Detection Finding events (class 2004) — alerts
+  format: json
+  source: ocsf
+emit:
+  - node:
+      type: Alert
+      ref: alert
+      identifiers:
+        alert_key:
+          concat:
+            - {coalesce: ["$.metadata.product.name", {literal: ocsf}]}
+            - ":"
+            - {coalesce: ["$.finding_info.uid", "$.metadata.uid"]}
+      properties:
+        title: {coalesce: ["$.finding_info.title", "$.message"]}
+        description: "$.finding_info.desc"
+        severity: {path: "$.severity", transform: lower, map: {informational: info, fatal: critical}}
+        status:
+          path: "$.status"
+          transform: lower
+          default: new
+          map: {"in progress": investigating, in_progress: investigating, suppressed: closed, resolved: closed,
+                archived: closed}
+        rule: {coalesce: ["$.finding_info.analytic.name", "$.finding_info.analytic.uid"]}
+        source_product: "$.metadata.product.name"
+        event_time: {coalesce: ["$.time_dt", "$.time"]}
+      observed_at: {coalesce: ["$.time_dt", "$.time"]}
+  - node:
+      type: Asset
+      ref: asset
+      optional: true
+      identifiers:
+        agent_id: "$.device.agent_list[0].uid"
+        asset_id: "$.device.uid"
+        fqdn: "$.device.hostname_fqdn"
+        hostname: "$.device.hostname"
+        ip: "$.device.ip"
+  - edge:
+      type: TRIGGERED_ON
+      source: {ref: alert}
+      target: {ref: asset}
+  - node:
+      type: Identity
+      ref: user
+      optional: true
+      identifiers:
+        sid: "$.actor.user.uid_alt"
+        upn: "$.actor.user.email_addr"
+        account: "$.actor.user.name"
+  - edge:
+      type: TRIGGERED_ON
+      source: {ref: alert}
+      target: {ref: user}
+  - foreach: "$.finding_info.attacks[*]"
+    emit:
+      - edge:
+          type: INDICATES
+          when: {coalesce: ["$.sub_technique.uid", "$.technique.uid"]}
+          source: {type: Alert, identifiers: {alert_key: {concat: [
+            {coalesce: ["$^.metadata.product.name", {literal: ocsf}]}, ":",
+            {coalesce: ["$^.finding_info.uid", "$^.metadata.uid"]}]}}}
+          target:
+            type: Technique
+            identifiers:
+              attack_id: {coalesce: ["$.sub_technique.uid", "$.technique.uid"]}
+  - foreach: "$.observables[*]"
+    when: "$.observables"
+    emit:
+      - node:
+          type: Indicator
+          ref: indicator
+          when: {in: ["$.type", ["IP Address", "Hostname", "URL String", "File Hash", "Hash", "Email Address"]]}
+          identifiers:
+            indicator: "$.value"
+          properties:
+            indicator_type:
+              path: "$.type"
+              map: {"ip address": ip, hostname: domain, "url string": url, "file hash": hash, hash: hash,
+                    "email address": email}
+            reputation: {path: "$.reputation.score", transform: lower,
+                         map: {malicious: malicious, "very safe": benign, safe: benign, "probably safe": benign,
+                               suspicious: suspicious, "may not be safe": suspicious, "*": unknown}}
+      - edge:
+          type: OBSERVED
+          source: {type: Alert, identifiers: {alert_key: {concat: [
+            {coalesce: ["$^.metadata.product.name", {literal: ocsf}]}, ":",
+            {coalesce: ["$^.finding_info.uid", "$^.metadata.uid"]}]}}}
+          target: {ref: indicator}
