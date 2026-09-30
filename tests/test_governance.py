@@ -424,3 +424,57 @@ def test_maintenance_pass_and_retention(db, ontology, ctx, tenant, load):
         edges = s.execute(select(Edge).where(Edge.tenant_id == tenant)).scalars().all()
         assert len(edges) == 1 and edges[0].valid_to is None  # only closed versions are pruned
     assert tenant in curation.tenants()
+
+
+def test_pseudonyms_are_keyed_with_the_deployment_secret():
+    """A masked value must not be confirmable by hashing a guess."""
+    import hashlib
+
+    from secgraph.query import views
+
+    original = views._Pseudonyms.key
+    try:
+        views.configure_pseudonyms("first-deployment-secret-0123456789abcdef")
+        first = views.pseudonym("asha.rao@example.com")
+        assert first == views.pseudonym("asha.rao@example.com")  # stable: masked values still correlate
+        assert first != views.pseudonym("asha.rao2@example.com")
+        assert hashlib.sha256(b"asha.rao@example.com").hexdigest()[:10] not in first
+        views.configure_pseudonyms("second-deployment-secret-0123456789abcde")
+        assert views.pseudonym("asha.rao@example.com") != first
+    finally:
+        views._Pseudonyms.key = original
+
+
+def test_worker_loop_survives_failures_and_stops_when_asked():
+    """One bad pass must not end the worker; a stop request must end it promptly."""
+    import threading
+    from types import SimpleNamespace
+
+    from secgraph.worker import run_forever
+
+    stop = threading.Event()
+    calls = {"webhooks": 0, "maintenance": 0}
+
+    def deliver_pending():
+        calls["webhooks"] += 1
+        if calls["webhooks"] == 1:
+            raise RuntimeError("database went away")
+        if calls["webhooks"] >= 4:
+            stop.set()
+        return {"delivered": 1, "failed": 0, "events": 1}
+
+    def tenants():
+        calls["maintenance"] += 1
+        raise RuntimeError("maintenance cannot list tenants")
+
+    fake = SimpleNamespace(
+        settings=SimpleNamespace(worker_interval_seconds=0.001, maintenance_interval_seconds=3600.0),
+        webhooks=SimpleNamespace(deliver_pending=deliver_pending),
+        curation=SimpleNamespace(tenants=tenants),
+    )
+    thread = threading.Thread(target=run_forever, args=(fake, stop), daemon=True)
+    thread.start()
+    thread.join(timeout=10)
+    assert not thread.is_alive(), "the worker did not stop"
+    assert calls["webhooks"] == 4  # kept going after the first pass raised
+    assert calls["maintenance"] == 1  # maintenance is attempted once per interval, even when it fails

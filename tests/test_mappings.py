@@ -389,3 +389,46 @@ def test_large_files_are_split_into_batches(ingest_service, registry, tenant, db
     rows = "\n".join(f"h{i}.corp.example,{i % 5 + 1}" for i in range(20))
     out = ingest_source(ingest_service, registry, small, tenant, "user:test", "assets_csv", "fqdn,criticality\n" + rows)
     assert out["nodes"]["created"] == 20 and len(out["batches"]) == 5
+
+
+def test_site_mappings_directory_and_the_documented_example(ingest_service, ontology, settings, tenant, db, find):
+    """config/mappings is the worked example in docs/DATA_ONBOARDING.md; it has to load and behave as described."""
+    from pathlib import Path
+
+    directory = Path(__file__).resolve().parents[1] / "config" / "mappings"
+    registry = MappingRegistry(ontology, str(directory))
+    assert "example_cmdb" in registry.names() and "assets_csv" in registry.names()
+    payload = json.dumps(
+        {
+            "result": [
+                {
+                    "sys_id": "SYS0001",
+                    "fqdn": "erp-01.corp.example",
+                    "ip_address": "10.20.0.5, 10.20.1.5",
+                    "name": "erp-01",
+                    "os": "RHEL",
+                    "used_for": "Production",
+                    "business_criticality": "4",
+                    "owned_by": {"display_value": ""},
+                    "support_group": {"display_value": "ERP Operations"},
+                    "business_service": "Finance ERP",
+                },
+                {"sys_id": "SYS0002", "fqdn": "lab-07.corp.example"},
+                {"sys_id": "SYS0003", "fqdn": "box-09.corp.example", "used_for": "Sandbox"},
+            ]
+        }
+    )
+    out = ingest_source(ingest_service, registry, settings, tenant, "user:test", "example_cmdb", payload)
+    assert out["source_records"] == 3
+    # A value the map does not list is passed through, and the ontology then refuses it by name.
+    assert [q["reason"] for q in out["quarantined"]] == [
+        "Asset.environment: 'Sandbox' is not one of production, staging, development, test, dr, unknown"
+    ]
+    erp = find("SYS0001", "Asset")
+    assert erp["properties"]["environment"] == "production" and erp["properties"]["criticality"] == 4
+    assert erp["properties"]["owner"] == "ERP Operations"  # coalesce skipped the empty first choice
+    assert sorted(erp["identifiers"]["ip"]) == ["10.20.0.5", "10.20.1.5"]
+    assert neighbours(db, tenant, erp["id"], "SUPPORTS") == ["Finance ERP"]
+    lab = find("lab-07.corp.example", "Asset", "fqdn")
+    assert lab["properties"]["environment"] == "unknown"  # field absent -> default
+    assert neighbours(db, tenant, lab["id"], "SUPPORTS") == []  # no business_service -> no edge

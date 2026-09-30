@@ -146,6 +146,7 @@ class AuthService:
                 return None, "unknown"
             if user.locked_until is not None and user.locked_until > now:
                 return None, "locked"
+            password_version[0] = self._password_version(user.password_hash)
             if user.disabled or not verify_password(password, user.password_hash):
                 user.failed_attempts += 1
                 if user.failed_attempts >= self.settings.login_max_failures:
@@ -174,6 +175,7 @@ class AuthService:
                 "ok",
             )
 
+        password_version = [""]
         principal, outcome = self.db.run(_work)
         AUTH_EVENTS.labels(outcome=f"login_{outcome}").inc()
         if principal is None:
@@ -189,6 +191,7 @@ class AuthService:
             "iat": now,
             "exp": now + self.settings.jwt_ttl_seconds,
             "jti": uuid.uuid4().hex,
+            "pv": password_version[0],
         }
         token = jwt.encode(claims, self.settings.jwt_secret, algorithm="HS256")
         return {
@@ -217,7 +220,7 @@ class AuthService:
                 subject = str(claims["sub"])
                 if not subject.startswith("user:"):
                     raise AuthenticationError("unsupported token subject")
-                return self._load_user_principal(subject.removeprefix("user:"))
+                return self._load_user_principal(subject.removeprefix("user:"), str(claims.get("pv", "")))
             if algorithm in _EXTERNAL_ALGORITHMS and self._public_key:
                 claims = jwt.decode(
                     token,
@@ -235,11 +238,18 @@ class AuthService:
             raise AuthenticationError(f"invalid token: {exc}") from exc
         raise AuthenticationError("unsupported token algorithm")
 
-    def _load_user_principal(self, username: str) -> Principal:
+    def _password_version(self, password_hash: str) -> str:
+        """Ties a session token to the password it was obtained with, without revealing the hash."""
+        return hmac.new(self.settings.jwt_secret.encode(), password_hash.encode(), hashlib.sha256).hexdigest()[:16]
+
+    def _load_user_principal(self, username: str, password_version: str) -> Principal:
         with self.db.transaction() as session:
             user = session.execute(select(User).where(User.username == username)).scalar_one_or_none()
             if user is None or user.disabled:
                 raise AuthenticationError("account is disabled or no longer exists")
+            # Changing a password signs out every session that was opened with the old one.
+            if not hmac.compare_digest(password_version, self._password_version(user.password_hash)):
+                raise AuthenticationError("the password has changed since this token was issued; sign in again")
             return Principal.build(
                 id=f"user:{user.username}",
                 name=user.username,

@@ -1,0 +1,38 @@
+# Example of a site-specific mapping: a CMDB REST export shaped like
+#   {"result": [{"sys_id": "...", "fqdn": "...", "ip_address": "10.0.0.5,10.0.1.5", ...}, ...]}
+#
+# To use it: point SECGRAPH_MAPPINGS_DIR at this directory, then
+#   secgraph ingest export.json --mapping example_cmdb
+# docs/DATA_ONBOARDING.md explains the expression language.
+mapping:
+  name: example_cmdb
+  description: Example CMDB REST export
+  format: json
+  source: cmdb
+  records: "$.result"
+emit:
+  - node:
+      type: Asset
+      ref: asset
+      identifiers:
+        asset_id: "$.sys_id"
+        fqdn: "$.fqdn"
+        ip: {path: "$.ip_address", transform: split_comma}
+      properties:
+        name: "$.name"
+        os: "$.os"
+        environment: {path: "$.used_for", map: {Production: production, Test: test}, default: unknown}
+        criticality: {path: "$.business_criticality", transform: int}
+        owner: {coalesce: ["$.owned_by.display_value", "$.support_group.display_value"]}
+  - node:
+      when: "$.business_service"
+      type: BusinessService
+      ref: service
+      identifiers:
+        service_key: "$.business_service"
+      properties:
+        name: "$.business_service"
+  - edge:
+      type: SUPPORTS
+      source: {ref: asset}
+      target: {ref: service}

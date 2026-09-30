@@ -820,6 +820,18 @@
             }
           },
           {
+            "in": "query",
+            "name": "time_budget_s",
+            "required": false,
+            "schema": {
+              "default": 10.0,
+              "exclusiveMinimum": 0,
+              "maximum": 60,
+              "title": "Time Budget S",
+              "type": "number"
+            }
+          },
+          {
             "description": "Read the graph as it was at this time (ISO 8601). Omit for the current state.",
             "in": "query",
             "name": "as_of",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 from datetime import datetime
 from typing import Any
 
@@ -17,9 +18,22 @@ def iso(value: datetime | None) -> str | None:
     return value.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z" if value is not None else None
 
 
+class _Pseudonyms:
+    key: bytes = hashlib.sha256(b"secgraph-pseudonym-unconfigured").digest()
+
+
+def configure_pseudonyms(secret: str) -> None:
+    """Key the pseudonyms with the deployment's secret, so they cannot be reversed by hashing guesses."""
+    _Pseudonyms.key = hmac.new(secret.encode(), b"secgraph-pseudonym-v1", hashlib.sha256).digest()
+
+
 def pseudonym(value: str) -> str:
-    """Stable, non-reversible stand-in so masked values can still be correlated."""
-    return "masked:" + hashlib.sha256(value.encode()).hexdigest()[:10]
+    """Stable stand-in for a masked value, so masked values can still be correlated.
+
+    It is a keyed hash: without the deployment's secret, a reader cannot confirm a guess
+    ("is this alice@bank.example?") by hashing it.
+    """
+    return "masked:" + hmac.new(_Pseudonyms.key, value.encode(), hashlib.sha256).hexdigest()[:16]
 
 
 class Viewer:

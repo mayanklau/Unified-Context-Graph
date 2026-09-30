@@ -76,6 +76,39 @@ def test_client_raises_typed_errors(graph, bridge):
     assert excinfo.value.status == 401
 
 
+def test_client_retries_reads_but_never_writes(monkeypatch):
+    import httpx
+
+    from secgraph import client as client_module
+
+    monkeypatch.setattr(client_module.time, "sleep", lambda _seconds: None)
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.method)
+        if request.method == "GET" and len(calls) == 1:
+            raise httpx.ConnectError("connection refused")
+        if request.method == "GET" and len(calls) == 2:
+            return httpx.Response(503, json={"error": {"code": "unavailable", "message": "starting"}})
+        if request.method == "GET":
+            return httpx.Response(200, json={"nodes": {}, "edges": {}})
+        return httpx.Response(503, json={"error": {"code": "unavailable", "message": "starting"}})
+
+    graph = SecurityGraphClient("http://graph.test", api_key="k", transport=httpx.MockTransport(handler))
+    assert graph.stats() == {"nodes": {}, "edges": {}}
+    assert calls == ["GET", "GET", "GET"]  # one connection failure, one 503, then success
+
+    calls.clear()
+    with pytest.raises(SecurityGraphError) as error:
+        graph.ingest("cmdb", nodes=[])
+    assert error.value.status == 503 and calls == ["POST"]  # a write is sent exactly once
+
+    calls.clear()
+    impatient = SecurityGraphClient("http://graph.test", retries=0, transport=httpx.MockTransport(handler))
+    with pytest.raises(httpx.ConnectError):
+        impatient.stats()
+
+
 def test_client_password_login(bridge, ctx, tenant):
     import uuid
 

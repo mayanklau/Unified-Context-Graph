@@ -7,15 +7,23 @@
     print(graph.context(asset["id"])["text"])
 
 The client only needs ``httpx``; it does not import the server.
+
+Reads (``GET``) are retried on connection failures and on 429, 502, 503 and 504,
+with backoff and honouring ``Retry-After``. Writes are never retried by the client:
+ingestion is idempotent, so the caller can safely send a batch again, but that is
+the caller's decision.
 """
 
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Iterator
 from typing import Any
 
 import httpx
+
+_RETRY_STATUS = frozenset({429, 502, 503, 504})
 
 
 class SecurityGraphError(Exception):
@@ -42,8 +50,10 @@ class SecurityGraphClient:
         tenant: str | None = None,
         timeout: float = 60.0,
         verify: bool | str = True,
+        retries: int = 2,
         transport: httpx.BaseTransport | None = None,
     ):
+        self.retries = max(0, retries)
         headers = {"Accept": "application/json", "User-Agent": "security-graph-client/1"}
         if api_key:
             headers["X-API-Key"] = api_key
@@ -69,7 +79,23 @@ class SecurityGraphClient:
         params = kwargs.get("params")
         if params:
             kwargs["params"] = {k: v for k, v in params.items() if v is not None}
-        response = self._http.request(method, path, **kwargs)
+        attempts = self.retries + 1 if method == "GET" else 1
+        for attempt in range(1, attempts + 1):
+            try:
+                response = self._http.request(method, path, **kwargs)
+            except httpx.TransportError:
+                if attempt == attempts:
+                    raise
+                time.sleep(min(0.25 * 2 ** (attempt - 1), 5.0))
+                continue
+            if response.status_code in _RETRY_STATUS and attempt < attempts:
+                try:
+                    delay = float(response.headers.get("Retry-After", ""))
+                except ValueError:
+                    delay = 0.25 * 2 ** (attempt - 1)
+                time.sleep(max(0.0, min(delay, 5.0)))
+                continue
+            break
         if response.status_code >= 400:
             try:
                 error = response.json()["error"]

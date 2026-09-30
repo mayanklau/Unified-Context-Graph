@@ -30,6 +30,7 @@ from secgraph.store.repository import GraphReader
 from secgraph.store.types import utcnow
 
 _CHARS_PER_TOKEN = 4
+_MARKER_ROOM = 64  # characters kept free for the line that says how much was left out
 _EDGE_BUDGET = 400
 _PER_GROUP = 6
 # Entities that are "about" another entity: the pack also describes the thing they point at.
@@ -391,16 +392,18 @@ class ContextService:
             header = ("# " if position == 0 else "\n## ") + section.title
             head = [header] + ([f"_{section.note}_"] if section.note else [])
             head_cost = sum(len(line) + 1 for line in head)
-            if position > 0 and used + head_cost + 40 > limit:
+            if position > 0 and used + head_cost + _MARKER_ROOM > limit:
                 truncated = True
                 rendered.append({"title": section.title, "lines": [], "omitted": len(section.lines)})
                 continue
             out.extend(head)
             used += head_cost
             kept: list[str] = []
-            for line in section.lines:
+            for index, line in enumerate(section.lines):
                 entry = line if position == 0 or line.startswith("  ") else f"- {line}"
-                if used + len(entry) + 1 > limit:
+                # While lines remain, keep room for the "… omitted" marker that may have to follow.
+                reserve = _MARKER_ROOM if index < len(section.lines) - 1 else 0
+                if used + len(entry) + 1 + reserve > limit:
                     break
                 kept.append(entry)
                 used += len(entry) + 1

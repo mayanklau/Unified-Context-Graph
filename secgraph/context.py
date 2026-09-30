@@ -22,6 +22,7 @@ from secgraph.ingest.mapping import MappingRegistry
 from secgraph.ingest.service import IngestService
 from secgraph.ontology import Ontology, get_ontology
 from secgraph.query.service import QueryService
+from secgraph.query.views import configure_pseudonyms
 from secgraph.store.db import Database
 
 
@@ -55,6 +56,7 @@ def build_context(settings: Settings | None = None, *, db: Database | None = Non
     settings = settings or get_settings()
     settings.validate_for_environment()
     ontology = get_ontology(settings.ontology_file)
+    configure_pseudonyms(settings.jwt_secret)
     database = db or Database(settings)
     guardrail = Guardrail(settings)
     ingest = IngestService(database, ontology, settings)

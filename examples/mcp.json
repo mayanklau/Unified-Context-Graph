@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "security-graph": {
+      "type": "http",
+      "url": "http://127.0.0.1:8080/mcp",
+      "headers": {
+        "X-API-Key": "sg_REPLACE_WITH_AN_AGENT_KEY"
+      }
+    },
+    "security-graph-stdio": {
+      "command": "secgraph",
+      "args": ["mcp", "--url", "http://127.0.0.1:8080"],
+      "env": {
+        "SECGRAPH_API_KEY": "sg_REPLACE_WITH_AN_AGENT_KEY"
+      }
+    }
+  }
+}

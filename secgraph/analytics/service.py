@@ -908,18 +908,23 @@ class AnalyticsService:
             n = graph.state_count
 
             def solve(targets: list[int]) -> dict[str, Any]:
-                result = absorbing_chain(
-                    n, graph.step_src, graph.step_dst, graph.step_prob, graph.detection, ATTACKER_INDEX, targets
-                )
-                return {
-                    "reach_before_detection": _round(result.reach_probability),
-                    "detected_first": _round(result.detection_probability),
-                    "contained": _round(result.contained_probability),
-                    "expected_attempts": _round(result.expected_attempts, 3),
-                    "states": result.states,
-                    "solver": result.method,
-                    "converged": result.converged,
-                }
+                def compute() -> dict[str, Any]:
+                    result = absorbing_chain(
+                        n, graph.step_src, graph.step_dst, graph.step_prob, graph.detection, ATTACKER_INDEX, targets
+                    )
+                    return {
+                        "reach_before_detection": _round(result.reach_probability),
+                        "detected_first": _round(result.detection_probability),
+                        "contained": _round(result.contained_probability),
+                        "expected_attempts": _round(result.expected_attempts, 3),
+                        "states": result.states,
+                        "solver": result.method,
+                        "converged": result.converged,
+                    }
+
+                key = "race:any" if len(targets) != 1 else f"race:{targets[0]}"
+                solved: dict[str, Any] = self._memoized(graph, key, compute, lambda _cached: False)
+                return dict(solved)
 
             if target_id is not None:
                 target = self._index(graph, target_id, "target")
