@@ -8,7 +8,7 @@
 #
 # On the air-gapped host:
 #   tar xzf security-graph-<version>-airgap.tar.gz && cd security-graph-<version>-airgap
-#   ./install.sh            # loads the images and starts the stack
+#   bash install.sh            # loads the images and starts the stack
 #
 # Options (environment):
 #   PYTHON_IMAGE    base image to build from   (default python:3.11-slim)
@@ -71,15 +71,15 @@ sed -i.bak 's/then `docker compose up -d --build`/then `docker compose up -d`/' 
 cat > "$OUT/install.sh" <<'INSTALL'
 #!/usr/bin/env bash
 # Install Security Graph from this bundle. No network access is needed.
-#   ./install.sh          load the images, start the stack, create the first admin
-#   ./install.sh --demo   also load the demonstration estate
+#   bash install.sh          load the images, start the stack, create the first admin
+#   bash install.sh --demo   also load the demonstration estate
 set -euo pipefail
 cd "$(dirname "$0")"
 for image in images/*.tar.gz; do
   echo "Loading $image"
   gunzip -c "$image" | docker load
 done
-exec ./scripts/quickstart.sh "$@"
+exec bash scripts/quickstart.sh "$@"
 INSTALL
 chmod +x "$OUT/install.sh" "$OUT/scripts/quickstart.sh"
 

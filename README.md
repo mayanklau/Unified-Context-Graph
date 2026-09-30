@@ -24,7 +24,7 @@ Pick one. Each ends with a console at `http://127.0.0.1:8080` and a demonstratio
 
 ```bash
 git clone <this repository> && cd security-graph
-./scripts/quickstart.sh --demo
+bash scripts/quickstart.sh --demo
 ```
 
 The script generates the secrets, builds the image, starts the stack, creates the first
@@ -41,7 +41,7 @@ make demo          # sign in as admin / Meridian-Demo-2026
 ```bash
 make airgap-bundle                       # → dist/security-graph-1.0.0-airgap.tar.gz
 # on the isolated host:
-tar xzf security-graph-1.0.0-airgap.tar.gz && cd security-graph-1.0.0-airgap && ./install.sh --demo
+tar xzf security-graph-1.0.0-airgap.tar.gz && cd security-graph-1.0.0-airgap && bash install.sh --demo
 ```
 
 Kubernetes manifests are in [`deploy/kubernetes`](deploy/kubernetes); see

@@ -1,0 +1,4 @@
+# Shell scripts, the Dockerfile and YAML must keep LF line endings wherever the repository is checked out.
+* text=auto eol=lf
+*.png binary
+*.ico binary

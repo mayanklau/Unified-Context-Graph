@@ -17,7 +17,7 @@ balancer, or the nginx overlay shipped in `deploy/compose/docker-compose.tls.yml
 ### Docker Compose (one host)
 
 ```bash
-./scripts/quickstart.sh            # add --demo for the demonstration estate
+bash scripts/quickstart.sh            # add --demo for the demonstration estate
 ```
 
 This writes `.env` with generated secrets (mode 600), builds the image, starts PostgreSQL, runs the
@@ -63,7 +63,7 @@ make airgap-bundle        # → dist/security-graph-<version>-airgap.tar.gz, wit
 
 The bundle holds the application and PostgreSQL images, the compose and Kubernetes files, the
 Python wheels, the documentation, `install.sh` and a `SHA256SUMS` of its contents. On the isolated
-host: unpack, check the sums, `./install.sh`. For Kubernetes, `docker load` the images and push them
+host: unpack, check the sums, `bash install.sh`. For Kubernetes, `docker load` the images and push them
 to the internal registry. `INSTALL-WITHOUT-DOCKER.txt` in the bundle covers a plain Python install.
 
 The image itself builds without network access when `wheelhouse/` holds the wheels, which is how
@@ -154,7 +154,7 @@ Five failed sign-ins lock an account for 15 minutes (`SECGRAPH_LOGIN_MAX_FAILURE
 
 1. Read `CHANGELOG.md` for the release.
 2. Back up the database.
-3. Deploy the new image. With Compose: `./scripts/quickstart.sh`. With Kubernetes: update the image
+3. Deploy the new image. With Compose: `bash scripts/quickstart.sh`. With Kubernetes: update the image
    tag and the Job name in `migrate-job.yaml`, then `kubectl apply -k`.
 4. `secgraph doctor`.
 

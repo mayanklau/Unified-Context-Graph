@@ -1,7 +1,7 @@
 # Security Graph on one host: PostgreSQL, the API (with the console) and the worker.
 #
-#   ./scripts/quickstart.sh          # generates .env, starts everything, creates the first admin
-#   ./scripts/quickstart.sh --demo   # the same, plus the Meridian Bank demonstration estate
+#   bash scripts/quickstart.sh          # generates .env, starts everything, creates the first admin
+#   bash scripts/quickstart.sh --demo   # the same, plus the Meridian Bank demonstration estate
 #
 # Or by hand: cp .env.example .env, fill in the two secrets, then `docker compose up -d --build`.
 # The API listens on 127.0.0.1:8080 by default; put a TLS-terminating proxy in front of it

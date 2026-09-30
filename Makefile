@@ -73,10 +73,10 @@ image: ## Build the container image
 	docker build -t $(IMAGE) .
 
 up: ## Docker: start PostgreSQL, API and worker; create the first admin
-	./scripts/quickstart.sh
+	bash scripts/quickstart.sh
 
 up-demo: ## Docker: the same, with the demonstration estate loaded
-	./scripts/quickstart.sh --demo
+	bash scripts/quickstart.sh --demo
 
 down: ## Docker: stop the stack (data is kept)
 	docker compose down
@@ -85,7 +85,7 @@ logs: ## Docker: follow the logs
 	docker compose logs -f --tail=100
 
 airgap-bundle: ## Build an offline installation bundle in dist/
-	./scripts/airgap-bundle.sh
+	bash scripts/airgap-bundle.sh
 
 bench: install ## Measure ingestion and analytics on a synthetic estate
 	$(BIN)/python scripts/benchmark.py

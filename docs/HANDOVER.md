@@ -7,7 +7,7 @@ and what to decide before production. Nothing here needs the original authors.
 
 ```bash
 git clone <this repository> && cd security-graph
-./scripts/quickstart.sh --demo        # Docker: PostgreSQL + API + worker, demo estate, admin password printed
+bash scripts/quickstart.sh --demo        # Docker: PostgreSQL + API + worker, demo estate, admin password printed
 # or, with no Docker:
 make demo                             # SQLite, demo estate, admin / Meridian-Demo-2026
 ```

@@ -97,7 +97,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Start with the quickstart script
-        run: ./scripts/quickstart.sh --demo
+        run: bash scripts/quickstart.sh --demo
       - name: The installation is healthy and the demo is loaded
         run: |
           docker compose exec -T api secgraph doctor
@@ -109,7 +109,7 @@ jobs:
           test "$(docker compose exec -T api id -u)" = "10001"
           ! docker compose exec -T api sh -c 'touch /opt/secgraph/probe' 2>/dev/null
       - name: Running the script again changes nothing
-        run: ./scripts/quickstart.sh | grep -q "Users already exist"
+        run: bash scripts/quickstart.sh | grep -q "Users already exist"
       - name: Logs on failure
         if: failure()
         run: docker compose logs --no-color
