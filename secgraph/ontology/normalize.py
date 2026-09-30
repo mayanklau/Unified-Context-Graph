@@ -87,7 +87,7 @@ def normalize_identifier(normalizer: str, kind: str, value: object) -> str:
                 raise _fail(kind, text, "not an ATT&CK / ATLAS id")
             return tid
         case "purl":
-            if not text.startswith("pkg:"):
+            if not text.lower().startswith("pkg:"):
                 raise _fail(kind, text, "package URLs start with 'pkg:'")
             scheme_type, _, rest = text.partition("/")
             return scheme_type.lower() + "/" + rest if rest else scheme_type.lower()

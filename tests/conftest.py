@@ -12,6 +12,7 @@ import os
 import uuid
 from collections.abc import Iterator
 
+import httpx
 import pytest
 
 from secgraph.config import Settings, set_settings
@@ -127,6 +128,29 @@ def client(ctx) -> Iterator[object]:
 
     with TestClient(create_app(context=ctx)) as test_client:
         yield test_client
+
+
+class Bridge(httpx.BaseTransport):
+    """Lets the real ``SecurityGraphClient`` talk to the app in-process through the test client."""
+
+    def __init__(self, test_client):
+        self.test_client = test_client
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        path = request.url.raw_path.decode()
+        response = self.test_client.request(
+            request.method, path, headers=dict(request.headers), content=request.read()
+        )
+        headers = {
+            k: v for k, v in response.headers.items()
+            if k.lower() not in ("content-length", "content-encoding", "transfer-encoding")
+        }
+        return httpx.Response(response.status_code, headers=headers, content=response.content)
+
+
+@pytest.fixture()
+def bridge(client) -> Bridge:
+    return Bridge(client)
 
 
 class Credentials:

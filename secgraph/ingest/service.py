@@ -421,7 +421,16 @@ class IngestService:
     def _load_nodes(self, session: Session, tenant_id: str, state: _ChunkState, ids: set[str]) -> None:
         missing = sorted(i for i in ids if i not in state.nodes)
         for chunk in chunked(missing):
-            for node in session.execute(select(Node).where(Node.tenant_id == tenant_id, Node.id.in_(chunk))).scalars():
+            # Rows are locked (in id order) for the rest of the transaction: two writers merging into the
+            # same entity take turns, and the second one merges into what the first one committed.
+            locked = (
+                select(Node)
+                .where(Node.tenant_id == tenant_id, Node.id.in_(chunk))
+                .order_by(Node.id)
+                .with_for_update(key_share=True)
+                .execution_options(populate_existing=True)
+            )
+            for node in session.execute(locked).scalars():
                 state.nodes[node.id] = node
                 state.node_aliases.setdefault(node.id, set())
             rows = session.execute(
@@ -903,11 +912,14 @@ class IngestService:
         current: dict[tuple[str, str, str, str], Edge] = {}
         for key_chunk in chunked(keys, 200):
             rows = session.execute(
-                select(Edge).where(
+                select(Edge)
+                .where(
                     Edge.tenant_id == tenant_id,
                     Edge.valid_to.is_(None),
                     tuple_(Edge.type, Edge.src_id, Edge.dst_id, Edge.edge_key).in_(key_chunk),
                 )
+                .order_by(Edge.id)
+                .with_for_update(key_share=True)
             ).scalars()
             for row in rows:
                 current[(row.type, row.src_id, row.dst_id, row.edge_key)] = row

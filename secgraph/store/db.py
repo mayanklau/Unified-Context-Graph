@@ -9,6 +9,8 @@ from contextlib import contextmanager
 from typing import Any, TypeVar
 
 from sqlalchemy import Engine, create_engine, event, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -17,6 +19,7 @@ from secgraph.config import Settings
 from secgraph.errors import RetryableWrite
 from secgraph.observability import get_logger
 from secgraph.store.models import Base, Tenant
+from secgraph.store.types import utcnow
 
 log = get_logger(__name__)
 T = TypeVar("T")
@@ -91,7 +94,7 @@ class Database:
             session.rollback()
             session.close()
 
-    def run(self, work: Callable[[Session], T], *, attempts: int = 5) -> T:
+    def run(self, work: Callable[[Session], T], *, attempts: int = 8) -> T:
         """Run ``work`` in a transaction, retrying when a concurrent writer wins a race."""
         delay = 0.02
         for attempt in range(1, attempts + 1):
@@ -163,18 +166,26 @@ def _configure_sqlite(engine: Engine) -> None:
 
 
 def ensure_tenant(session: Session, tenant_id: str, name: str = "") -> Tenant:
+    """Return the tenant row, creating it if needed. Safe when several writers create it at once."""
     tenant = session.get(Tenant, tenant_id)
-    if tenant is None:
-        tenant = Tenant(id=tenant_id, name=name or tenant_id)
-        session.add(tenant)
-        try:
-            with session.begin_nested():
-                session.flush()
-        except IntegrityError:
-            session.expunge(tenant)
-            tenant = session.get(Tenant, tenant_id)
-            if tenant is None:  # pragma: no cover - only under extreme races
-                raise RetryableWrite("tenant creation raced") from None
+    if tenant is not None:
+        return tenant
+    values = {
+        "id": tenant_id,
+        "name": name or tenant_id,
+        "created_at": utcnow(),
+        "change_seq": 0,
+        "audit_seq": 0,
+        "audit_head": "0" * 64,
+    }
+    dialect = session.get_bind().dialect.name
+    if dialect == "postgresql":
+        session.execute(pg_insert(Tenant).values(**values).on_conflict_do_nothing(index_elements=["id"]))
+    else:
+        session.execute(sqlite_insert(Tenant).values(**values).on_conflict_do_nothing(index_elements=["id"]))
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:  # pragma: no cover - the row exists once the statement above returns
+        raise RetryableWrite("tenant creation raced")
     return tenant
 
 
@@ -185,7 +196,9 @@ def lock_tenant(session: Session, tenant_id: str) -> Tenant:
     while this lock is held, and the lock is released by commit, so sequence
     order equals commit order and a reader can never skip an event.
     """
-    stmt = select(Tenant).where(Tenant.id == tenant_id).with_for_update()
+    # FOR NO KEY UPDATE: every node and edge insert holds a key-share lock on its tenant row
+    # (foreign key). A plain FOR UPDATE would conflict with those and deadlock concurrent writers.
+    stmt = select(Tenant).where(Tenant.id == tenant_id).with_for_update(key_share=True)
     tenant = session.execute(stmt.execution_options(populate_existing=True)).scalar_one_or_none()
     if tenant is None:
         ensure_tenant(session, tenant_id)
