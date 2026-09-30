@@ -26,7 +26,7 @@ Open `http://127.0.0.1:8080`. Then, in this order:
 | | |
 |---|---|
 | Code | ~15,000 lines of Python in `secgraph/`, ~1,600 lines of dependency-free JavaScript/CSS for the console |
-| Tests | 381, in ~5,000 lines: unit, integration through the real API, browser tests of the console, concurrency tests on PostgreSQL, maths checked against brute force |
+| Tests | 383, in ~5,000 lines: unit, integration through the real API, browser tests of the console, concurrency tests on PostgreSQL, maths checked against brute force |
 | Runtime dependencies | 12 direct, 37 in total, pinned with hashes |
 | Stateful dependencies | PostgreSQL. Nothing else. |
 | Interfaces | REST (50 paths), MCP (18 tools), console, CLI (14 commands), Python client, change feed, webhooks, Markdown vault |
@@ -38,7 +38,7 @@ Everything in this table was run, not assumed.
 
 | Claim | Evidence |
 |---|---|
-| The test suite passes | 381 tests on SQLite and the same suite on PostgreSQL 16; Python 3.11 and 3.12; from a fresh clone installed from the hashed lock file |
+| The test suite passes | 383 tests on SQLite and the same suite on PostgreSQL 16 (Python 3.11); on Python 3.12 from a fresh clone installed from the hashed lock file (SQLite) |
 | Lint and types are clean | `ruff check`, `ruff format --check`, `mypy` (untyped definitions disallowed) |
 | Coverage | 93% of statements on the SQLite run |
 | The bounds are bounds | lower ≤ exact ≤ upper against brute-force enumeration on random graphs; proofs in [ANALYTICS_MATH.md](ANALYTICS_MATH.md) |
@@ -73,7 +73,8 @@ Be clear-eyed about these.
   is what quarantine reasons are for.
 - **No estate larger than 50,000 assets has been measured**, and all measurements were on a
   two-core machine with the database on the same host.
-- **No penetration test, no independent security review by a third party.**
+- **No penetration test and no independent code or security review.** The authors found and fixed
+  issues while testing and documenting (see the commit history); nobody else has looked yet.
 - **The integrations with CRVM, Remediation OS, the asset inventory and AgentPEP / Thoth are
   contracts, not working adapters** — except the Agentic SOC Harness connectors, which exist and
   are tested against its protocol definitions. [INTEGRATION.md](INTEGRATION.md) says what each
@@ -122,7 +123,7 @@ Collected from the other documents so they are in one place.
 - An `as_of` analytics request rebuilds the attack graph each time; it is not cached.
 - History is system time — what the graph knew when — not a bitemporal model of when facts were
   true in the world. Records carry `first_seen` and `last_seen` from their sources.
-- Ingestion is around 1,600–2,300 records per second per process on PostgreSQL on a two-core
+- Ingestion is around 1,500–2,300 records per second per process on PostgreSQL on a two-core
   machine. It is safe to run several loads in parallel.
 - Remediation priorities and choke points work within a time budget and say when they were cut
   short (`partial`).

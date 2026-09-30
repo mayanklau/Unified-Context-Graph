@@ -287,7 +287,7 @@ def test_admin_can_create_a_key_and_add_a_note(browser, console):
     page.fill('#main input[name="name"]', "triage agent")
     page.click('#main button:has-text("Create key")')
     page.wait_for_selector("#main pre:has-text('sg_')")
-    assert "triage agent" in page.inner_text("#main")
+    page.wait_for_selector("#main td:has-text('triage agent')")  # the list refreshes after the key is shown
 
     session.open("memory")
     title = "Console note " + uuid.uuid4().hex[:6]

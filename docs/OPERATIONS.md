@@ -204,7 +204,53 @@ entry that does not match. Schedule it, and export the audit log to the SIEM.
 
 ## Sizing
 
-<!--SIZING-->
+Measured with `scripts/benchmark.py --database-url …` (`make bench` runs it on SQLite) on a synthetic,
+bank-shaped estate, PostgreSQL 16 on the same host,
+**two CPU cores and 7 GB of memory**. Treat these as a floor for planning; run the benchmark on
+your own hardware before committing to a size.
+
+| | 10,000 assets | 50,000 assets |
+|---|---|---|
+| Entities / relationships | 34,000 / 71,000 | 165,000 / 355,000 |
+| First load | 69 s (1,500 records/s) | 321 s (1,600 records/s) |
+| Reload, nothing changed | 45 s (2,300 records/s) | 229 s (2,300 records/s) |
+| Lookup by identifier | 2 ms | 4 ms |
+| Neighbours of one entity | 7 ms | 7 ms |
+| Subgraph, depth 2 | 34 ms | 34 ms |
+| Attack graph (states / steps) | 12,000 / 35,000 | 60,000 / 176,000 |
+| Build the attack graph (once per graph change) | 4 s | 21 s |
+| Overview with the sampled estimate (first call) | 1 s | 7 s |
+| Top attack paths | 10 ms | 10 ms |
+| Remediation priorities | 10 s (time budget) | 10 s (time budget) |
+| Detection race (first call) | 2 s | 12 s |
+| Peak memory of one process doing all of the above | 310 MB | 900 MB |
+
+The 10,000-asset column was measured on an idle machine with the code as shipped. The
+50,000-asset column was measured while other work was running on the same two cores and before
+two later improvements (statistics refresh during bulk loads; caching of the detection race), so
+its load and analytics times are pessimistic.
+
+What follows from this:
+
+- **Queries do not slow down as the estate grows.** They are index lookups.
+- **Ingestion is CPU-bound in the application**, at roughly 1,500–2,300 records per second per
+  process. A 100,000-asset estate is on the order of a million records: about ten minutes for a
+  first load, less for the daily reload. Loads of different sources can run in parallel.
+- **Analytics memory and build time grow linearly** with the attack graph. Allow about 1 GB per
+  50,000 assets for an API replica, plus headroom; the Kubernetes manifest's 4 GiB limit is sized
+  for roughly 150,000 assets.
+- **Analytics results are computed once per graph state and reused**; the first caller after a
+  change pays, later callers do not.
+- **PostgreSQL**: 2 vCPU and 4 GB is enough for the sizes above. Storage grows with change volume
+  because history is kept; start with 20 GB and watch it.
+
+Starting points:
+
+| Estate | API replicas | API memory limit | PostgreSQL |
+|---|---|---|---|
+| up to 10,000 assets | 2 × 0.5 vCPU | 1 GiB | 2 vCPU, 4 GB, 20 GB disk |
+| up to 50,000 assets | 2 × 1 vCPU | 2 GiB | 2 vCPU, 8 GB, 50 GB disk |
+| up to 150,000 assets (extrapolated, not measured) | 2–3 × 2 vCPU | 4 GiB | 4 vCPU, 16 GB, 100 GB disk |
 
 ## Routine maintenance
 
