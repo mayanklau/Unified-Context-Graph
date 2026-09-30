@@ -302,17 +302,27 @@ class GraphReader:
         return [node_record(r) for r in rows], int(total)
 
     def iter_nodes(
-        self, types: Sequence[str], *, as_of: datetime | None = None, batch: int = 5000
+        self,
+        types: Sequence[str],
+        *,
+        as_of: datetime | None = None,
+        where: Mapping[str, Any] | None = None,
+        batch: int = 5000,
     ) -> Iterator[NodeRecord]:
-        """Stream every node of the given types (keyset pagination; constant memory)."""
+        """Stream every node of the given types (keyset pagination; constant memory).
+
+        ``where`` is pushed down to SQL for current-state reads. For ``as_of`` reads it is
+        ignored (the historical state may differ from the current row) and the caller filters.
+        """
         if not types:
             return
+        extra = PropertyFilter(self.dialect).build(Node.properties, where) if where and as_of is None else []
         last = ""
         while True:
             rows = list(
                 self.session.execute(
                     select(Node)
-                    .where(Node.tenant_id == self.tenant_id, Node.type.in_(list(types)), Node.id > last)
+                    .where(Node.tenant_id == self.tenant_id, Node.type.in_(list(types)), Node.id > last, *extra)
                     .order_by(Node.id)
                     .limit(batch)
                 ).scalars()

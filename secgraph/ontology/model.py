@@ -191,6 +191,10 @@ class ExploitabilityParams(_Strict):
     cvss_vector_weight: float = 0.6
     cvss_score_weight: float = 0.3
     unknown_default: float = 0.05
+    # Findings with no linked vulnerability (misconfigurations): probability by severity.
+    severity_fallback: dict[str, float] = Field(
+        default_factory=lambda: {"critical": 0.5, "high": 0.3, "medium": 0.15, "low": 0.05, "info": 0.0}
+    )
     remote_vectors: tuple[str, ...] = ("network", "adjacent")
     unknown_vector_is_remote: bool = True
     max_probability: float = 0.99
@@ -218,7 +222,9 @@ class GraphBindings(_Strict):
     instance_of_edge: str = "INSTANCE_OF"
     protects_edge: str = "PROTECTS"
     mitigates_edge: str = "MITIGATES"
-    dependency_edges: tuple[str, ...] = ("SUPPORTS", "DEPENDS_ON")
+    # Business impact: "X SUPPORTS S" and "S DEPENDS_ON X" both mean S needs X.
+    supports_edges: tuple[str, ...] = ("SUPPORTS",)
+    depends_on_edges: tuple[str, ...] = ("DEPENDS_ON",)
 
 
 class AttackSemantics(_Strict):
@@ -338,7 +344,8 @@ class Ontology(_Strict):
             ("instance_of_edge", b.instance_of_edge),
             ("protects_edge", b.protects_edge),
             ("mitigates_edge", b.mitigates_edge),
-            *((f"dependency_edges[{i}]", e) for i, e in enumerate(b.dependency_edges)),
+            *((f"supports_edges[{i}]", e) for i, e in enumerate(b.supports_edges)),
+            *((f"depends_on_edges[{i}]", e) for i, e in enumerate(b.depends_on_edges)),
         ):
             if e not in self.edge_types:
                 errors.append(f"attack_semantics.bindings.{label} references unknown edge type '{e}'")

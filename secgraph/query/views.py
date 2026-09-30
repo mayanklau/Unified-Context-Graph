@@ -30,19 +30,23 @@ class Viewer:
         self.scope = scope
         self._sensitive_props = ontology.sensitive_properties()
         self._sensitive_idents = ontology.sensitive_identifiers()
-        self._mask_name: set[str] = set()
+        self.masked_name_types: set[str] = set()
         for name, node_type in ontology.node_types.items():
             sensitive = self._sensitive_props.get(name, frozenset()) | self._sensitive_idents.get(name, frozenset())
             if sensitive & set(node_type.name_from):
-                self._mask_name.add(name)
+                self.masked_name_types.add(name)
+
+    def display_name(self, node_type: str, node_id: str, name: str) -> str:
+        """The name this caller may see: personal names become a stable pseudonym when masked."""
+        if not self.scope.pii and node_type in self.masked_name_types:
+            return f"{node_type}-{hashlib.sha256(node_id.encode()).hexdigest()[:8]}"
+        return name
 
     def node(self, record: NodeRecord, *, brief: bool = False) -> dict[str, Any]:
         masked = not self.scope.pii
-        name = record.name
+        name = self.display_name(record.type, record.id, record.name)
         properties = record.properties
         if masked:
-            if record.type in self._mask_name:
-                name = f"{record.type}-{hashlib.sha256(record.id.encode()).hexdigest()[:8]}"
             hidden = self._sensitive_props.get(record.type)
             if hidden:
                 properties = {k: (MASK if k in hidden else v) for k, v in properties.items()}

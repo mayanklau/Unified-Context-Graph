@@ -169,7 +169,7 @@ class QueryService:
         viewer = Viewer(self.ontology, scope)
         if text and not scope.pii:
             # Free-text search over personal names/identifiers would be an oracle for masked data.
-            searchable = [t for t in (effective or self._all_types) if t not in viewer._mask_name]
+            searchable = [t for t in (effective or self._all_types) if t not in viewer.masked_name_types]
             effective = searchable
         page = self._limit(limit)
         with timed(QUERY_SECONDS, operation="search"):

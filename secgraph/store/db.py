@@ -74,6 +74,22 @@ class Database:
         finally:
             session.close()
 
+    @contextmanager
+    def snapshot(self) -> Iterator[Session]:
+        """Read-only unit of work on one consistent snapshot (REPEATABLE READ on PostgreSQL).
+
+        Used by analytics, which read the graph in many statements and must not
+        see half of a concurrent ingest batch.
+        """
+        session = self._factory()
+        try:
+            if not self.is_sqlite:
+                session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+            yield session
+        finally:
+            session.rollback()
+            session.close()
+
     def run(self, work: Callable[[Session], T], *, attempts: int = 5) -> T:
         """Run ``work`` in a transaction, retrying when a concurrent writer wins a race."""
         delay = 0.02

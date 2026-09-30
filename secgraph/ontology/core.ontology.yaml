@@ -490,7 +490,8 @@ attack_semantics:
     instance_of_edge: INSTANCE_OF
     protects_edge: PROTECTS
     mitigates_edge: MITIGATES
-    dependency_edges: [SUPPORTS, DEPENDS_ON]
+    supports_edges: [SUPPORTS]        # component -> service: the service needs the component
+    depends_on_edges: [DEPENDS_ON]    # dependant -> dependency: the source needs the target
 
   entries:
     - name: internet_exposed_asset
@@ -688,6 +689,8 @@ attack_semantics:
     cvss_vector_weight: 0.6
     cvss_score_weight: 0.3
     unknown_default: 0.05
+    # A finding with no linked vulnerability (a misconfiguration) is scored by its severity.
+    severity_fallback: {critical: 0.5, high: 0.3, medium: 0.15, low: 0.05, info: 0.0}
     remote_vectors: [network, adjacent]
     unknown_vector_is_remote: true
     max_probability: 0.99
