@@ -17,6 +17,7 @@ Guarantees
 from __future__ import annotations
 
 import hashlib
+import threading
 import time
 import uuid
 from collections.abc import Sequence
@@ -58,6 +59,7 @@ from secgraph.store.types import utcnow
 log = get_logger(__name__)
 
 _MAX_QUARANTINE_REPORTED = 100
+_STATISTICS_EVERY = 5_000  # new rows in a tenant before planner statistics are refreshed
 _FUTURE_TOLERANCE = timedelta(hours=24)
 # Alias kinds with this prefix record a steward's decision about an ambiguous weak identifier.
 PIN_PREFIX = "pin."
@@ -198,10 +200,29 @@ class IngestService:
         self.ontology = ontology
         self.settings = settings
         self._priority = {name: rank for rank, name in enumerate(settings.source_priority_list())}
+        self._growth: dict[str, tuple[int, int]] = {}  # tenant -> (rows created, rows created since statistics)
+        self._growth_lock = threading.Lock()
 
     # ------------------------------------------------------------------ #
     # Public API
     # ------------------------------------------------------------------ #
+    def _note_growth(self, tenant_id: str, created: int) -> None:
+        """Refresh planner statistics as a tenant grows, so a bulk load does not outrun them.
+
+        The interval widens with the amount loaded (5,000 new rows, then a quarter of everything
+        loaded so far), so a first load of any size triggers a few dozen refreshes at most and an
+        unchanged reload triggers none.
+        """
+        if created <= 0:
+            return
+        with self._growth_lock:
+            total, since = self._growth.get(tenant_id, (0, 0))
+            total, since = total + created, since + created
+            due = since >= max(_STATISTICS_EVERY, total // 4)
+            self._growth[tenant_id] = (total, 0 if due else since)
+        if due:
+            self.db.refresh_statistics()
+
     def ingest(
         self,
         tenant_id: str,
@@ -273,6 +294,7 @@ class IngestService:
                     lambda s, c=chunk: self._apply_node_chunk(s, tenant_id, batch_id, source, c)  # type: ignore[misc]
                 )
                 self._absorb(result, refs, outcome)
+                self._note_growth(tenant_id, outcome.nodes.created)
             for edge_chunk in chunked(prepared_edges, size):
                 outcome = self.db.run(
                     lambda s, c=edge_chunk: self._apply_edge_chunk(  # type: ignore[misc]
@@ -280,6 +302,7 @@ class IngestService:
                     )
                 )
                 self._absorb(result, refs, outcome)
+                self._note_growth(tenant_id, outcome.nodes.created + outcome.edges.created)
         except Exception as exc:
             self._close_batch(tenant_id, batch_id, principal, result, status="failed", error=str(exc)[:2000])
             raise

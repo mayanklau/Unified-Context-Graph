@@ -66,6 +66,7 @@ cp docs/*.md "$OUT/docs/" 2>/dev/null || true
 # The images are loaded, not built, on the air-gapped host.
 sed -i.bak '/^  build:/,/^      PYTHON_IMAGE:.*/d' "$OUT/docker-compose.yml" && rm -f "$OUT/docker-compose.yml.bak"
 sed -i.bak 's/docker compose up -d --build --wait/docker compose up -d --wait/' "$OUT/scripts/quickstart.sh" && rm -f "$OUT/scripts/quickstart.sh.bak"
+sed -i.bak 's/then `docker compose up -d --build`/then `docker compose up -d`/' "$OUT/docker-compose.yml" && rm -f "$OUT/docker-compose.yml.bak"
 
 cat > "$OUT/install.sh" <<'INSTALL'
 #!/usr/bin/env bash

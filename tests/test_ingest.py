@@ -533,3 +533,31 @@ def test_ttl_expiry_closes_stale_edges_and_nodes(db, ontology, settings, ingest_
         assert reader.count_edges_by_type() == {"CONNECTS_TO": 1}
         assert "Indicator" not in reader.count_nodes_by_type()
         assert reader.count_nodes_by_type()["Asset"] == 3  # assets have no TTL
+
+
+def test_planner_statistics_are_refreshed_as_a_tenant_grows(ingest_service, monkeypatch):
+    """A first load must not outrun the statistics the database plans with; a reload must not pay for them."""
+    import uuid
+
+    refreshed: list[str] = []
+    monkeypatch.setattr(ingest_service.db, "refresh_statistics", lambda: refreshed.append("x") or True)
+    tenant = "growth-" + uuid.uuid4().hex[:8]
+
+    ingest_service._note_growth(tenant, 0)  # nothing new: never refresh
+    ingest_service._note_growth(tenant, 4_999)
+    assert refreshed == []
+    ingest_service._note_growth(tenant, 1)  # 5,000 new rows
+    assert len(refreshed) == 1
+
+    for _ in range(200):  # a further 100,000 rows in chunks of 500
+        ingest_service._note_growth(tenant, 500)
+    assert 8 <= len(refreshed) <= 16  # the interval widens as the tenant grows: not once per chunk
+
+    before = len(refreshed)
+    ingest_service._note_growth("another-" + tenant, 100)  # tenants are tracked separately
+    assert len(refreshed) == before
+
+
+def test_refresh_statistics_runs_on_postgresql_and_is_a_no_op_elsewhere(db):
+    assert db.refresh_statistics() is (db.dialect == "postgresql")
+    assert db.refresh_statistics(("not_a_table",)) is False  # refused, never interpolated into SQL

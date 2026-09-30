@@ -119,6 +119,27 @@ class Database:
     def drop_all(self) -> None:
         Base.metadata.drop_all(self.engine)
 
+    def refresh_statistics(self, tables: tuple[str, ...] = ("nodes", "node_aliases", "edges")) -> bool:
+        """Ask PostgreSQL to re-sample the hot tables. A no-op elsewhere.
+
+        The planner chooses indexes from table statistics. When a tenant's data appears or grows
+        quickly — a first load — the statistics still say that tenant has no rows, and lookups
+        that should touch a handful of rows scan the tenant's whole table instead. Autovacuum
+        catches up eventually; a bulk load cannot wait for it.
+        """
+        if self.dialect != "postgresql":
+            return False
+        try:
+            with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+                for table in tables:
+                    if table not in Base.metadata.tables:
+                        raise ValueError(f"unknown table {table!r}")
+                    conn.execute(text(f"ANALYZE {table}"))  # noqa: S608 - names checked against the schema above
+            return True
+        except Exception:
+            log.warning("could not refresh table statistics", exc_info=True)
+            return False
+
     def ping(self) -> bool:
         try:
             with self.engine.connect() as conn:
